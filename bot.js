@@ -7,8 +7,11 @@ const WEBAPP_URL = 'https://carwash2o.vercel.app/'; // TODO: set actual deployed
 
 const bot = new TelegramBot(TOKEN, { polling: true });
 
+console.log('Bot started, polling...');
+
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
+  console.log(`/start from chat ${chatId}`);
   bot.sendMessage(chatId, 
     '👋 Добро пожаловать в H2O Автомойку!\n\n' +
     'Этот бот поможет вам быстро и удобно записаться на мойку через Telegram.\n' +
