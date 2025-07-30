@@ -26,8 +26,9 @@ bot.onText(/\/start/, (msg) => {
   );
 });
 
-// Optionally handle other commands or messages
+// TEMP: Log chat_id and message_thread_id for group topics
 bot.on('message', (msg) => {
+  console.log('chat_id:', msg.chat?.id, 'thread_id:', msg.message_thread_id, 'text:', msg.text);
   if (!msg.text.startsWith('/start')) {
     bot.sendMessage(msg.chat.id, 'Чтобы начать, нажмите /start или используйте кнопку ниже!');
   }
