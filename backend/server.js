@@ -122,7 +122,16 @@ app.post('/reviews', (req, res) => {
     bot.sendMessage(TG_CHAT_ID, msg, {
       parse_mode: 'HTML',
       message_thread_id: TG_REVIEWS_THREAD_ID
-    }).then(() => console.log('Telegram notification sent')).catch(e => console.error('Telegram error:', e && e.stack ? e.stack : e));
+    })
+    .then(() => console.log('Telegram notification sent'))
+    .catch(e => {
+      console.error('Telegram error:', {
+        chat_id: TG_CHAT_ID,
+        thread_id: TG_REVIEWS_THREAD_ID,
+        msg,
+        error: e && e.response && e.response.body ? e.response.body : (e && e.stack ? e.stack : e)
+      });
+    });
     console.log('Review saved, reviewId:', this.lastID);
     res.json({ success: true, reviewId: this.lastID });
   });
