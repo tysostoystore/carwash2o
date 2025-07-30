@@ -82,20 +82,29 @@ app.post('/order', (req, res) => {
 // === ОТЗЫВЫ ===
 // Добавить отзыв
 app.post('/reviews', (req, res) => {
+  console.log('--- POST /reviews ---');
+  console.log('Headers:', req.headers);
+  console.log('Method:', req.method);
+  console.log('URL:', req.url);
+  console.log('Body:', req.body);
   const { name, rating, text, photo } = req.body;
   if (!name || !rating) {
+    console.log('Validation failed:', { name, rating });
     return res.status(400).json({ error: 'Имя и рейтинг обязательны' });
   }
+  console.log('DB insert params:', [name, rating, text || '', photo ? '[photo present]' : '[no photo]']);
   db.run('INSERT INTO reviews (name, rating, text, photo) VALUES (?, ?, ?, ?)', [name, rating, text || '', photo || ''], function(err) {
     if (err) return res.status(500).json({ error: 'Ошибка сервера' });
     // Отправить уведомление в Telegram
     const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
     let msg = `⭐️ Новый отзыв (${stars})\n<b>${name}</b>`;
     if (text) msg += `\n${text}`;
+    console.log('Sending Telegram notification...');
     bot.sendMessage(TG_CHAT_ID, msg, {
       parse_mode: 'HTML',
       message_thread_id: TG_REVIEWS_THREAD_ID
-    }).catch(console.error);
+    }).then(() => console.log('Telegram notification sent')).catch(e => console.error('Telegram error:', e && e.stack ? e.stack : e));
+    console.log('Review saved, reviewId:', this.lastID);
     res.json({ success: true, reviewId: this.lastID });
   });
 });
