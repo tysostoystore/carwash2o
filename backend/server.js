@@ -22,6 +22,21 @@ const db = new sqlite3.Database('./carwash.db', (err) => {
     console.error('Could not connect to database', err);
   } else {
     console.log('Connected to SQLite database');
+    // Автоматическое создание таблицы reviews при запуске
+    db.run(`CREATE TABLE IF NOT EXISTS reviews (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      rating INTEGER NOT NULL,
+      text TEXT,
+      photo TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`, (err) => {
+      if (err) {
+        console.error('Could not create reviews table:', err.message);
+      } else {
+        console.log('Table reviews ensured.');
+      }
+    });
   }
 });
 
