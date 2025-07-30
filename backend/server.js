@@ -120,19 +120,39 @@ app.post('/reviews', (req, res) => {
     let msg = `⭐️ Новый отзыв (${stars})\n<b>${name}</b>`;
     if (text) msg += `\n${text}`;
     console.log('Sending Telegram notification...');
-    bot.sendMessage(TG_CHAT_ID, msg, {
-      parse_mode: 'HTML',
-      message_thread_id: TG_REVIEWS_THREAD_ID
-    })
-    .then(() => console.log('Telegram notification sent'))
-    .catch(e => {
-      console.error('Telegram error:', {
-        chat_id: TG_CHAT_ID,
-        thread_id: TG_REVIEWS_THREAD_ID,
-        msg,
-        error: e && e.response && e.response.body ? e.response.body : (e && e.stack ? e.stack : e)
+    if (photo && photo.startsWith('data:image/')) {
+      // Отправить фото с подписью
+      const base64Data = photo.split(',')[1];
+      const imgBuffer = Buffer.from(base64Data, 'base64');
+      bot.sendPhoto(TG_CHAT_ID, imgBuffer, {
+        caption: msg,
+        parse_mode: 'HTML',
+        message_thread_id: TG_REVIEWS_THREAD_ID
+      })
+      .then(() => console.log('Telegram photo sent'))
+      .catch(e => {
+        console.error('Telegram photo error:', {
+          chat_id: TG_CHAT_ID,
+          thread_id: TG_REVIEWS_THREAD_ID,
+          msg,
+          error: e && e.response && e.response.body ? e.response.body : (e && e.stack ? e.stack : e)
+        });
       });
-    });
+    } else {
+      bot.sendMessage(TG_CHAT_ID, msg, {
+        parse_mode: 'HTML',
+        message_thread_id: TG_REVIEWS_THREAD_ID
+      })
+      .then(() => console.log('Telegram notification sent'))
+      .catch(e => {
+        console.error('Telegram error:', {
+          chat_id: TG_CHAT_ID,
+          thread_id: TG_REVIEWS_THREAD_ID,
+          msg,
+          error: e && e.response && e.response.body ? e.response.body : (e && e.stack ? e.stack : e)
+        });
+      });
+    }
     console.log('Review saved, reviewId:', this.lastID);
     res.json({ success: true, reviewId: this.lastID });
   });
