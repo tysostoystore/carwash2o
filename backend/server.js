@@ -9,7 +9,8 @@ const PORT = process.env.PORT || 3001;
 // === Telegram notification config ===
 const TG_TOKEN = process.env.TG_TOKEN || '<YOUR_BOT_TOKEN_HERE>';
 const TG_CHAT_ID = -1002856721715;
-const TG_REVIEWS_THREAD_ID = 7;
+const TG_REVIEWS_THREAD_ID = 26;
+const TG_ORDERS_THREAD_ID = 29;
 const bot = new TelegramBot(TG_TOKEN, { polling: false });
 
 app.use(express.json({ limit: '5mb' }));
