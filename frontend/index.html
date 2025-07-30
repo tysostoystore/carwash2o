@@ -160,19 +160,71 @@
     const reviewSendBtn = document.getElementById('review-send-btn');
     const reviewSendText = document.getElementById('review-send-text');
     const reviewSendSpinner = document.getElementById('review-send-spinner');
-    reviewSendBtn.addEventListener('click', (e) => {
+    reviewSendBtn.addEventListener('click', async (e) => {
       e.preventDefault();
       reviewSendBtn.disabled = true;
       reviewSendText.classList.add('hidden');
       reviewSendSpinner.classList.remove('hidden');
-      setTimeout(() => {
+      // Сбор данных
+      const name = document.querySelector('#review-modal input[name="name"]')?.value || 'Гость';
+      const text = document.querySelector('#review-modal textarea')?.value || '';
+      const rating = selectedRating;
+      const photoInput = document.querySelector('#review-modal input[type="file"]');
+      let photo = '';
+      // Простейший base64 encode (если фото выбрано)
+      if (photoInput && photoInput.files && photoInput.files[0]) {
+        const file = photoInput.files[0];
+        const reader = new FileReader();
+        reader.onload = async function(ev) {
+          photo = ev.target.result;
+          await sendReview({ name, rating, text, photo });
+        };
+        reader.readAsDataURL(file);
+      } else {
+        await sendReview({ name, rating, text, photo });
+      }
+    });
+
+    async function sendReview(data) {
+      const msg = document.getElementById('review-msg') || document.createElement('div');
+      msg.id = 'review-msg';
+      msg.className = 'text-center text-sm mt-2';
+      reviewSendBtn.parentNode.insertBefore(msg, reviewSendBtn.nextSibling);
+      if (!data.rating) {
+        msg.textContent = 'Поставьте оценку';
+        msg.className = 'text-red-400 text-center mt-2';
         reviewSendBtn.disabled = false;
         reviewSendText.classList.remove('hidden');
         reviewSendSpinner.classList.add('hidden');
-        modal.classList.add('modal-leave');
-        setTimeout(() => { modal.classList.add('hidden'); modal.classList.remove('modal-leave'); }, 220);
-      }, 1200);
-    });
+        return;
+      }
+      try {
+        const res = await fetch('/reviews', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        const result = await res.json();
+        if (result.success) {
+          msg.textContent = 'Спасибо за отзыв!';
+          msg.className = 'text-green-400 text-center mt-2';
+          setTimeout(() => {
+            modal.classList.add('modal-leave');
+            setTimeout(() => { modal.classList.add('hidden'); modal.classList.remove('modal-leave'); }, 220);
+            msg.textContent = '';
+          }, 1200);
+        } else {
+          msg.textContent = result.error || 'Ошибка отправки';
+          msg.className = 'text-red-400 text-center mt-2';
+        }
+      } catch {
+        msg.textContent = 'Ошибка сервера';
+        msg.className = 'text-red-400 text-center mt-2';
+      }
+      reviewSendBtn.disabled = false;
+      reviewSendText.classList.remove('hidden');
+      reviewSendSpinner.classList.add('hidden');
+    }
   </script>
   <!-- Booking Modal (hidden by default) -->
   <div id="booking-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm hidden">
