@@ -13,7 +13,7 @@ const TG_REVIEWS_THREAD_ID = 7;
 const bot = new TelegramBot(TG_TOKEN, { polling: false });
 
 app.use(express.json());
-app.use(cors());
+app.use(cors({ origin: 'https://carwash2o.vercel.app' }));
 
 // SQLite DB setup (file-based)
 const db = new sqlite3.Database('./carwash.db', (err) => {

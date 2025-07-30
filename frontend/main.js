@@ -1,5 +1,5 @@
 // Логика для фронтенда: форма записи, мобильная, тёмная, всё на русском
-const api = (path, opts = {}) => fetch('http://localhost:3001' + path, opts).then(r => r.json());
+const api = (path, opts = {}) => fetch('https://carwash2o-production.up.railway.app' + path, opts).then(r => r.json());
 
 async function renderBookingForm() {
   const app = document.getElementById('app');
