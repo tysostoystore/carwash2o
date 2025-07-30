@@ -95,7 +95,10 @@ app.post('/reviews', (req, res) => {
   }
   console.log('DB insert params:', [name, rating, text || '', photo ? '[photo present]' : '[no photo]']);
   db.run('INSERT INTO reviews (name, rating, text, photo) VALUES (?, ?, ?, ?)', [name, rating, text || '', photo || ''], function(err) {
-    if (err) return res.status(500).json({ error: 'Ошибка сервера' });
+    if (err) {
+      console.error('DB error in /reviews:', err && err.stack ? err.stack : err);
+      return res.status(500).json({ error: 'Ошибка сервера (БД): ' + (err && err.message ? err.message : err) });
+    }
     // Отправить уведомление в Telegram
     const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
     let msg = `⭐️ Новый отзыв (${stars})\n<b>${name}</b>`;
