@@ -2,8 +2,15 @@
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
+const TelegramBot = require('node-telegram-bot-api');
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// === Telegram notification config ===
+const TG_TOKEN = process.env.TG_TOKEN || '<YOUR_BOT_TOKEN_HERE>';
+const TG_CHAT_ID = -1002856721715;
+const TG_REVIEWS_THREAD_ID = 7;
+const bot = new TelegramBot(TG_TOKEN, { polling: false });
 
 app.use(express.json());
 app.use(cors());
@@ -69,6 +76,45 @@ app.post('/order', (req, res) => {
         db.run('UPDATE slots SET status = "busy" WHERE date = ? AND time = ?', [date, time]);
         res.json({ success: true, orderId: this.lastID });
       });
+  });
+});
+
+// === ОТЗЫВЫ ===
+// Добавить отзыв
+app.post('/reviews', (req, res) => {
+  const { name, rating, text, photo } = req.body;
+  if (!name || !rating) {
+    return res.status(400).json({ error: 'Имя и рейтинг обязательны' });
+  }
+  db.run('INSERT INTO reviews (name, rating, text, photo) VALUES (?, ?, ?, ?)', [name, rating, text || '', photo || ''], function(err) {
+    if (err) return res.status(500).json({ error: 'Ошибка сервера' });
+    // Отправить уведомление в Telegram
+    const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+    let msg = `⭐️ Новый отзыв (${stars})\n<b>${name}</b>`;
+    if (text) msg += `\n${text}`;
+    bot.sendMessage(TG_CHAT_ID, msg, {
+      parse_mode: 'HTML',
+      message_thread_id: TG_REVIEWS_THREAD_ID
+    }).catch(console.error);
+    res.json({ success: true, reviewId: this.lastID });
+  });
+});
+// Публичные отзывы (только 5 звёзд)
+app.get('/reviews', (req, res) => {
+  db.all('SELECT id, name, rating, text, photo, created_at FROM reviews WHERE rating = 5 ORDER BY created_at DESC', (err, rows) => {
+    if (err) return res.status(500).json({ error: 'Ошибка сервера' });
+    res.json(rows);
+  });
+});
+// Все отзывы для админа
+app.get('/admin/reviews', (req, res) => {
+  const token = req.headers['authorization'];
+  if (token !== 'Bearer secret-admin-token') {
+    return res.status(401).json({ error: 'Нет доступа' });
+  }
+  db.all('SELECT * FROM reviews ORDER BY created_at DESC', (err, rows) => {
+    if (err) return res.status(500).json({ error: 'Ошибка сервера' });
+    res.json(rows);
   });
 });
 
