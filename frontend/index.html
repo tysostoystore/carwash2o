@@ -208,11 +208,19 @@
         if (result.success) {
           msg.textContent = 'Спасибо за отзыв!';
           msg.className = 'text-green-400 text-center mt-2';
-          setTimeout(() => {
-            modal.classList.add('modal-leave');
-            setTimeout(() => { modal.classList.add('hidden'); modal.classList.remove('modal-leave'); }, 220);
-            msg.textContent = '';
-          }, 1200);
+          // Если 5 звёзд — показать модалку с просьбой оставить отзыв на 2ГИС
+          if (data.rating === 5) {
+            setTimeout(() => {
+              show2GISModal();
+              msg.textContent = '';
+            }, 1200);
+          } else {
+            setTimeout(() => {
+              modal.classList.add('modal-leave');
+              setTimeout(() => { modal.classList.add('hidden'); modal.classList.remove('modal-leave'); }, 220);
+              msg.textContent = '';
+            }, 1200);
+          }
         } else {
           msg.textContent = result.error || 'Ошибка отправки';
           msg.className = 'text-red-400 text-center mt-2';
@@ -224,6 +232,45 @@
       reviewSendBtn.disabled = false;
       reviewSendText.classList.remove('hidden');
       reviewSendSpinner.classList.add('hidden');
+    }
+
+    // Модалка для 2ГИС
+    function show2GISModal() {
+      // Создать модалку, если её нет
+      let modal2gis = document.getElementById('gis-modal');
+      if (!modal2gis) {
+        modal2gis = document.createElement('div');
+        modal2gis.id = 'gis-modal';
+        modal2gis.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 backdrop-blur-sm';
+        modal2gis.innerHTML = `
+          <div class="bg-[#23272f] rounded-2xl shadow-xl p-7 w-full max-w-xs flex flex-col gap-4 relative animate-fade-in border border-[#f97316]/30">
+            <button id="close-gis-modal" class="absolute top-3 right-3 text-gray-400 hover:text-white text-2xl leading-none">&times;</button>
+            <div class="text-xl font-bold text-white mb-2 text-center">Спасибо за 5 звёзд!</div>
+            <div class="text-gray-300 text-center mb-2">Пожалуйста, поддержите нас отзывом на 2ГИС — это очень важно для нас!</div>
+            <a href="https://2gis.ru/spb/branches/70000001006983509/firm/70000001046321158/30.352404%2C59.873384/tab/reviews/addreview" target="_blank" rel="noopener noreferrer" class="w-full py-3 rounded-xl bg-[#f97316] text-white text-lg font-semibold shadow-sm hover:bg-[#fb923c] active:scale-95 transition text-center block">Оставить отзыв на 2ГИС</a>
+          </div>
+        `;
+        document.body.appendChild(modal2gis);
+      } else {
+        modal2gis.classList.remove('hidden');
+      }
+      // Закрытие модалки
+      document.getElementById('close-gis-modal').onclick = () => {
+        modal2gis.classList.add('hidden');
+        // Закрыть и review modal тоже, если вдруг открыт
+        const modal = document.getElementById('review-modal');
+        modal.classList.add('modal-leave');
+        setTimeout(() => { modal.classList.add('hidden'); modal.classList.remove('modal-leave'); }, 220);
+      };
+      // Клик вне окна — тоже закрыть
+      modal2gis.onclick = (e) => {
+        if (e.target === modal2gis) {
+          modal2gis.classList.add('hidden');
+          const modal = document.getElementById('review-modal');
+          modal.classList.add('modal-leave');
+          setTimeout(() => { modal.classList.add('hidden'); modal.classList.remove('modal-leave'); }, 220);
+        }
+      };
     }
   </script>
   <!-- Booking Modal (hidden by default) -->
