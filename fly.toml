@@ -1,11 +1,19 @@
 app = "carwash2o"
 primary_region = "ams" # Можно поменять на ru-central1, если Fly.io поддерживает РФ-регионы
 
+[build]
+  dockerfile = "Dockerfile"
+
 [env]
   PORT = "3000"
 
 [experimental]
   auto_rollback = true
+
+# Volume for persistent storage (SQLite)
+[[mounts]]
+  destination = "/app/backend/data"
+  source = "carwash_data"
 
 [[services]]
   internal_port = 3000
