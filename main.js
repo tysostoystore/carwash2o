@@ -1,5 +1,16 @@
 // Логика для фронтенда: форма записи, мобильная, тёмная, всё на русском
-const api = (path, opts = {}) => fetch('https://carwash2o-production.up.railway.app' + path, opts).then(r => r.json());
+// Для фронтенда: BACKEND_URL и WEBAPP_URL из config.js (Node-style)
+let BACKEND_URL = "";
+let WEBAPP_URL = "";
+try {
+  // Если фронт собирается как Node (например, для SSR)
+  ({ BACKEND_URL, WEBAPP_URL } = require("../config.js"));
+} catch {
+  // Если фронт работает в браузере, ищем window-переменные (например, через config.js для браузера)
+  BACKEND_URL = window.BACKEND_URL || "https://carwash2o.fly.dev";
+  WEBAPP_URL = window.WEBAPP_URL || "https://carwash2o.fly.dev/";
+}
+const api = (path, opts = {}) => fetch(BACKEND_URL + path, opts).then(r => r.json());
 
 async function renderBookingForm() {
   const app = document.getElementById('app');
