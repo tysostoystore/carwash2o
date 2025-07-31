@@ -12,9 +12,9 @@ jobs:
 
       - name: Build static site
         run: |
-          mkdir public
-          cp -r frontend/* public/
-          touch public/.nojekyll
+          mkdir -p public/carwash2o
+          cp -r frontend/* public/carwash2o/
+          touch public/carwash2o/.nojekyll
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
