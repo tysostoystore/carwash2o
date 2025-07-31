@@ -9,6 +9,26 @@ const bot = new TelegramBot(TOKEN, { polling: true });
 
 console.log('Bot started, polling...');
 
+// Логируем ошибки polling
+bot.on('polling_error', (err) => {
+  console.error('Polling error:', err);
+});
+
+// Логируем любые необработанные ошибки
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception in bot.js:', err);
+  process.exit(1);
+});
+process.on('unhandledRejection', (err) => {
+  console.error('Unhandled Rejection in bot.js:', err);
+  process.exit(1);
+});
+
+// Логируем завершение процесса
+process.on('exit', (code) => {
+  console.log('bot.js process exited with code', code);
+});
+
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
   console.log(`/start from chat ${chatId}`);
