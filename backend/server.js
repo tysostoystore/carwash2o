@@ -20,7 +20,6 @@ const TelegramBot = require('node-telegram-bot-api');
 const app = express();
 
 // Временно разрешаем CORS для всех доменов для диагностики
-const cors = require('cors');
 app.use(cors());
 app.options('*', cors());
 
