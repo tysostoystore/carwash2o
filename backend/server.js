@@ -239,3 +239,6 @@ app.get('/admin/orders', (req, res) => {
 
 // Server already started above (line 11-13)
 // Duplicate app.listen() removed to fix EADDRINUSE on Fly.io
+
+// === Запускаем Telegram-бота в этом же процессе ===
+require('../bot');

@@ -16,11 +16,4 @@ else
 fi
 
 echo "START.SH: launching backend/server.js"
-node backend/server.js &
-BACKEND_PID=$!
-echo "START.SH: backend/server.js PID=$BACKEND_PID"
-
-sleep 3
-
-echo "START.SH: launching bot.js"
-node bot.js
+node backend/server.js
