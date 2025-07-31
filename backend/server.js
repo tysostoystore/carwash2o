@@ -4,7 +4,10 @@ const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
 const TelegramBot = require('node-telegram-bot-api');
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on port ${PORT}`);
+});
 
 // === Telegram notification config ===
 const TG_TOKEN = process.env.TG_TOKEN || '<YOUR_BOT_TOKEN_HERE>';
