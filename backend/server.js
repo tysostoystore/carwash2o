@@ -18,6 +18,12 @@ const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
 const TelegramBot = require('node-telegram-bot-api');
 const app = express();
+
+// Временно разрешаем CORS для всех доменов для диагностики
+const cors = require('cors');
+app.use(cors());
+app.options('*', cors());
+
 // Get port from environment or default to 3000 for local development
 const PORT = process.env.PORT || 3000;
 
@@ -47,13 +53,7 @@ const bot = new TelegramBot(TG_TOKEN, { polling: false });
 
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
-app.use(cors({ origin: [
-  'https://carwash2o.vercel.app',
-  'https://carwash2o.pages.dev',
-  'https://tysostoystore.github.io',
-  'https://carwash2o.fly.dev',
-  'http://localhost:3000'
-]}));
+
 
 // === Serve static frontend ===
 const path = require('path');
