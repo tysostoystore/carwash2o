@@ -10,10 +10,10 @@ primary_region = "ams" # Можно поменять на ru-central1, если 
 [experimental]
   auto_rollback = true
 
-# Volume temporarily disabled to fix deployment
-# [[mounts]]
-#   destination = "/app/backend/data"
-#   source = "carwash_data"
+# Volume for persistent storage (SQLite)
+[[mounts]]
+  destination = "/app/backend/data"
+  source = "carwash_data"
 
 [[services]]
   internal_port = 3000
