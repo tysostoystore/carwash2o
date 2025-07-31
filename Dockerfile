@@ -8,14 +8,16 @@ WORKDIR /app
 COPY package*.json ./
 
 # Устанавливаем зависимости
-RUN npm install --production
+RUN npm install
 
 # Копируем остальные файлы проекта
 COPY . .
+
+# Устанавливаем глобальные зависимости
+RUN npm install -g concurrently
 
 # Открываем порт (важно для Fly.io)
 EXPOSE 3000
 
 # Запуск приложения
-RUN npm install -g concurrently
 CMD ["npm", "start"]
