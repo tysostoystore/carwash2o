@@ -15,7 +15,10 @@ const bot = new TelegramBot(TG_TOKEN, { polling: false });
 
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
-app.use(cors({ origin: 'https://carwash2o.vercel.app' }));
+app.use(cors({ origin: [
+  'https://carwash2o.vercel.app',
+  'https://carwash2o.pages.dev'
+]}));
 
 // SQLite DB setup (file-based)
 const db = new sqlite3.Database('./carwash.db', (err) => {
