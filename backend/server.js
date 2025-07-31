@@ -4,9 +4,24 @@ const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
 const TelegramBot = require('node-telegram-bot-api');
 const app = express();
+// Get port from environment or default to 3000 for local development
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, '0.0.0.0', () => {
+
+// Start the server
+const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
+});
+
+// Handle any unhandled promise rejections
+process.on('unhandledRejection', (err) => {
+  console.error('Unhandled Rejection:', err);
+  server.close(() => process.exit(1));
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+  server.close(() => process.exit(1));
 });
 
 // === Telegram notification config ===
