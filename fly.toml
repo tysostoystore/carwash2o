@@ -1,4 +1,4 @@
-app = "carwash"
+app = "carwash2o"
 primary_region = "waw" # Можно поменять на ru-central1, если Fly.io поддерживает РФ-регионы
 
 [build]
