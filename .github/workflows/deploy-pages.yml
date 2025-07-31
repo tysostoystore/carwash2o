@@ -12,6 +12,7 @@ jobs:
 
       - name: Build static site
         run: |
+          mkdir -p public
           cp -r frontend/* public/
           touch public/.nojekyll
 
