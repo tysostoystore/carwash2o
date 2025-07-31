@@ -2,8 +2,9 @@
 // Greets user and shows WebApp button
 const TelegramBot = require('node-telegram-bot-api');
 
-const TOKEN = '7964941663:AAFLKeuq8Ht24kOHZrteM6MwIrz4FpWVuns';
-const WEBAPP_URL = 'https://carwash2o.fly.dev/'; // TODO: set actual deployed URL
+const { TG_TOKEN, WEBAPP_URL } = require('./config.js');
+
+const TOKEN = TG_TOKEN || 'REPLACE_ME'; // fallback for dev
 
 const bot = new TelegramBot(TOKEN, { polling: true });
 

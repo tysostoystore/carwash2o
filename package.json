@@ -2,9 +2,11 @@
   "name": "tg_carwash2o",
   "version": "1.0.0",
   "scripts": {
-    "start": "./start.sh",
-    "bot": "node bot.js",
-    "dev": "concurrently \"npm run start\" \"npm run bot\"",
+    "sync-config": "node scripts/sync-config.js",
+    "start": "npm run sync-config && ./start.sh",
+    "bot": "npm run sync-config && node bot.js",
+    "dev": "npm run sync-config && concurrently \"npm run start\" \"npm run bot\"",
+
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
