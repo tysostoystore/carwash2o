@@ -13,6 +13,9 @@ RUN npm install
 # Копируем остальные файлы проекта
 COPY . .
 
+# Создаём директорию для SQLite базы (важно для Fly.io)
+RUN mkdir -p backend/data
+
 # Устанавливаем глобальные зависимости
 RUN npm install -g concurrently
 
