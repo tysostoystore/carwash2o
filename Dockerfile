@@ -17,4 +17,5 @@ COPY . .
 EXPOSE 3000
 
 # Запуск приложения
-CMD ["node", "backend/server.js"]
+RUN npm install -g concurrently
+CMD ["npm", "start"]
