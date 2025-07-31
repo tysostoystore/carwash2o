@@ -36,8 +36,22 @@ app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 app.use(cors({ origin: [
   'https://carwash2o.vercel.app',
   'https://carwash2o.pages.dev',
-  'https://tysostoystore.github.io'
+  'https://tysostoystore.github.io',
+  'https://carwash2o.fly.dev',
+  'http://localhost:3000'
 ]}));
+
+// === Serve static frontend ===
+const path = require('path');
+app.use(express.static(path.join(__dirname, '../frontend')));
+// SPA fallback: serve index.html for unknown routes (except API)
+app.get(/^\/(?!api|admin|backend|orders|reviews).*/, (req, res, next) => {
+  if (req.accepts('html')) {
+    res.sendFile(path.join(__dirname, '../frontend/index.html'));
+  } else {
+    next();
+  }
+});
 
 // SQLite DB setup (file-based)
 const db = new sqlite3.Database('/app/backend/data/carwash.db', (err) => {
