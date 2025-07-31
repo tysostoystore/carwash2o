@@ -10,6 +10,11 @@ primary_region = "waw" # Можно поменять на ru-central1, если 
 [experimental]
   auto_rollback = true
 
+# Volume for persistent storage (SQLite)
+[[mounts]]
+  destination = "/app/backend/data"
+  source = "carwash_data"
+
 [[services]]
   internal_port = 3000
   protocol = "tcp"
