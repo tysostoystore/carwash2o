@@ -1,4 +1,18 @@
 // Minimal Express server setup with SQLite placeholder
+
+// === Глобальные обработчики ошибок процесса ===
+process.on('uncaughtException', err => {
+  console.error('Uncaught Exception:', err && err.stack ? err.stack : err);
+  process.exit(1);
+});
+process.on('unhandledRejection', err => {
+  console.error('Unhandled Rejection:', err && err.stack ? err.stack : err);
+  process.exit(1);
+});
+process.on('exit', code => {
+  console.log('Process exited with code', code);
+});
+
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
