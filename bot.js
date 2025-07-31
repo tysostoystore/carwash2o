@@ -3,7 +3,7 @@
 const TelegramBot = require('node-telegram-bot-api');
 
 const TOKEN = '7964941663:AAFLKeuq8Ht24kOHZrteM6MwIrz4FpWVuns';
-const WEBAPP_URL = 'https://carwash2o.fly.dev'; // TODO: set actual deployed URL
+const WEBAPP_URL = 'https://carwash2o.fly.dev/'; // TODO: set actual deployed URL
 
 const bot = new TelegramBot(TOKEN, { polling: true });
 
