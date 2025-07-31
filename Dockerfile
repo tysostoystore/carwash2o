@@ -16,8 +16,11 @@ COPY . .
 # Устанавливаем глобальные зависимости
 RUN npm install -g concurrently
 
+COPY start.sh ./
+RUN chmod +x start.sh
+
 # Открываем порт (важно для Fly.io)
 EXPOSE 3000
 
 # Запуск приложения
-CMD ["npm", "start"]
+CMD ["./start.sh"]
