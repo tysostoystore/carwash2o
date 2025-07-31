@@ -18,7 +18,7 @@ app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 app.use(cors({ origin: [
   'https://carwash2o.vercel.app',
   'https://carwash2o.pages.dev',
-  'https://tysostoystore.github.io/carwash2o'
+  'https://tysostoystore.github.io'
 ]}));
 
 // SQLite DB setup (file-based)
