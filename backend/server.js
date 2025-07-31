@@ -224,6 +224,5 @@ app.get('/admin/orders', (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+// Server already started above (line 11-13)
+// Duplicate app.listen() removed to fix EADDRINUSE on Fly.io
