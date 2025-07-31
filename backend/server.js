@@ -40,7 +40,7 @@ app.use(cors({ origin: [
 ]}));
 
 // SQLite DB setup (file-based)
-const db = new sqlite3.Database('./carwash.db', (err) => {
+const db = new sqlite3.Database('/app/backend/data/carwash.db', (err) => {
   if (err) {
     console.error('Could not connect to database', err);
   } else {
