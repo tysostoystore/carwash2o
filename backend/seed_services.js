@@ -1,6 +1,6 @@
 // Скрипт для наполнения таблицы услуг начальными данными
 const sqlite3 = require('sqlite3').verbose();
-const db = new sqlite3.Database('./carwash.db');
+const db = new sqlite3.Database('./data/carwash.db');
 
 const services = [
   { name: 'Мойка кузова', price: 500, duration: 30 },

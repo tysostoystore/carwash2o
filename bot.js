@@ -22,7 +22,7 @@ process.on('uncaughtException', (err) => {
 });
 process.on('unhandledRejection', (err) => {
   console.error('Unhandled Rejection in bot.js:', err);
-  process.exit(1);
+  // process.exit(1); // Не валим процесс на любой ошибке Telegram API!
 });
 
 // Логируем завершение процесса
@@ -30,9 +30,20 @@ process.on('exit', (code) => {
   console.log('bot.js process exited with code', code);
 });
 
+// --- Антиспам на приветствие ---
+const lastWelcome = {};
+
 bot.onText(/\/start/, async (msg) => {
   const chatId = msg.chat.id;
+  const now = Date.now();
+  // Не отправлять приветствие чаще, чем раз в минуту на пользователя
+  if (lastWelcome[chatId] && now - lastWelcome[chatId] < 60 * 1000) {
+    console.log(`Skip welcome for ${chatId}: too soon`);
+    return;
+  }
+  lastWelcome[chatId] = now;
   console.log(`/start from chat ${chatId}`);
+  console.log('Sending WebApp button with URL:', WEBAPP_URL);
   try {
     await bot.sendMessage(chatId, 
       '👋 Добро пожаловать в H2O Автомойку!\n\n' +
@@ -46,8 +57,6 @@ bot.onText(/\/start/, async (msg) => {
         }
       }
     );
-    // Авто-открытие WebApp: отправляем ссылку, если Telegram не поддерживает web_app-кнопки
-    await bot.sendMessage(chatId, `Если кнопка не сработала, просто перейдите по ссылке: ${WEBAPP_URL}`);
   } catch (err) {
     console.error('[TG] sendMessage error in /start:', err && err.response && err.response.body ? err.response.body : err);
   }
