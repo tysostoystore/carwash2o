@@ -94,7 +94,8 @@ const db = new sqlite3.Database('/app/backend/data/carwash.db', (err) => {
 app.get('/services', (req, res) => {
   db.all('SELECT name, price, duration FROM services', (err, rows) => {
     if (err) {
-      return res.status(500).json({ error: 'Ошибка сервера' });
+      console.error('DB error in /services:', err);
+      return res.status(500).json({ error: 'Ошибка сервера (services:select)' });
     }
     const services = rows.map(row => ({
       name: row.name,
@@ -108,7 +109,10 @@ app.get('/services', (req, res) => {
 // Получение доступных дат
 app.get('/available-dates', (req, res) => {
   db.all('SELECT DISTINCT date FROM slots WHERE status = "free"', (err, rows) => {
-    if (err) return res.status(500).json({ error: 'Ошибка сервера' });
+    if (err) {
+      console.error('DB error in /available-dates:', err);
+      return res.status(500).json({ error: 'Ошибка сервера (available-dates:select)' });
+    }
     res.json(rows.map(r => r.date));
   });
 });
@@ -118,7 +122,10 @@ app.get('/available-times', (req, res) => {
   const date = req.query.date;
   if (!date) return res.status(400).json({ error: 'Не указана дата' });
   db.all('SELECT time FROM slots WHERE date = ? AND status = "free"', [date], (err, rows) => {
-    if (err) return res.status(500).json({ error: 'Ошибка сервера' });
+    if (err) {
+      console.error('DB error in /available-times:', err);
+      return res.status(500).json({ error: 'Ошибка сервера (available-times:select)' });
+    }
     res.json(rows.map(r => r.time));
   });
 });
@@ -137,7 +144,10 @@ app.post('/order', (req, res) => {
     // Создать заказ
     db.run('INSERT INTO orders (services, date, time, name, phone, car, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
       [services, date, time, name, phone, car, 'новый'], function(err) {
-        if (err) return res.status(500).json({ error: 'Ошибка сервера' });
+        if (err) {
+          console.error('DB error in /order (insert):', err);
+          return res.status(500).json({ error: 'Ошибка сервера (order:insert)' });
+        }
         // Занять слот
         db.run('UPDATE slots SET status = "busy" WHERE date = ? AND time = ?', [date, time]);
         res.json({ success: true, orderId: this.lastID });
@@ -178,13 +188,22 @@ app.post('/reviews', (req, res) => {
         parse_mode: 'HTML',
         message_thread_id: TG_REVIEWS_THREAD_ID
       })
-      .then(() => console.log('Telegram photo sent'))
-      .catch(e => {
-        console.error('Telegram photo error:', {
+      .then((tgRes) => {
+        console.log('[TG] Photo sent:', {
           chat_id: TG_CHAT_ID,
           thread_id: TG_REVIEWS_THREAD_ID,
-          msg,
-          error: e && e.response && e.response.body ? e.response.body : (e && e.stack ? e.stack : e)
+          caption: msg,
+          tg_message_id: tgRes && tgRes.message_id,
+          date: new Date().toISOString()
+        });
+      })
+      .catch(e => {
+        console.error('[TG] Photo ERROR:', {
+          chat_id: TG_CHAT_ID,
+          thread_id: TG_REVIEWS_THREAD_ID,
+          caption: msg,
+          error: e && e.response && e.response.body ? e.response.body : (e && e.stack ? e.stack : e),
+          date: new Date().toISOString()
         });
       });
     } else {
@@ -192,13 +211,22 @@ app.post('/reviews', (req, res) => {
         parse_mode: 'HTML',
         message_thread_id: TG_REVIEWS_THREAD_ID
       })
-      .then(() => console.log('Telegram notification sent'))
-      .catch(e => {
-        console.error('Telegram error:', {
+      .then((tgRes) => {
+        console.log('[TG] Message sent:', {
           chat_id: TG_CHAT_ID,
           thread_id: TG_REVIEWS_THREAD_ID,
-          msg,
-          error: e && e.response && e.response.body ? e.response.body : (e && e.stack ? e.stack : e)
+          text: msg,
+          tg_message_id: tgRes && tgRes.message_id,
+          date: new Date().toISOString()
+        });
+      })
+      .catch(e => {
+        console.error('[TG] Message ERROR:', {
+          chat_id: TG_CHAT_ID,
+          thread_id: TG_REVIEWS_THREAD_ID,
+          text: msg,
+          error: e && e.response && e.response.body ? e.response.body : (e && e.stack ? e.stack : e),
+          date: new Date().toISOString()
         });
       });
     }
@@ -209,7 +237,10 @@ app.post('/reviews', (req, res) => {
 // Публичные отзывы (только 5 звёзд)
 app.get('/reviews', (req, res) => {
   db.all('SELECT id, name, rating, text, photo, created_at FROM reviews WHERE rating = 5 ORDER BY created_at DESC', (err, rows) => {
-    if (err) return res.status(500).json({ error: 'Ошибка сервера' });
+    if (err) {
+      console.error('DB error in /reviews (public):', err);
+      return res.status(500).json({ error: 'Ошибка сервера (reviews:select)' });
+    }
     res.json(rows);
   });
 });
@@ -220,7 +251,10 @@ app.get('/admin/reviews', (req, res) => {
     return res.status(401).json({ error: 'Нет доступа' });
   }
   db.all('SELECT * FROM reviews ORDER BY created_at DESC', (err, rows) => {
-    if (err) return res.status(500).json({ error: 'Ошибка сервера' });
+    if (err) {
+      console.error('DB error in /admin/reviews:', err);
+      return res.status(500).json({ error: 'Ошибка сервера (admin-reviews:select)' });
+    }
     res.json(rows);
   });
 });
@@ -232,7 +266,10 @@ app.get('/admin/orders', (req, res) => {
     return res.status(401).json({ error: 'Нет доступа' });
   }
   db.all('SELECT * FROM orders', (err, rows) => {
-    if (err) return res.status(500).json({ error: 'Ошибка сервера' });
+    if (err) {
+      console.error('DB error in /admin/orders:', err);
+      return res.status(500).json({ error: 'Ошибка сервера (admin-orders:select)' });
+    }
     res.json(rows);
   });
 });
