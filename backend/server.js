@@ -158,6 +158,7 @@ app.post('/order', (req, res) => {
 // === ОТЗЫВЫ ===
 // Добавить отзыв
 app.post('/reviews', (req, res) => {
+  console.log('--- POST /reviews received ---', new Date().toISOString(), req.body);
   console.log('--- POST /reviews ---');
   console.log('Headers:', req.headers);
   console.log('Method:', req.method);
@@ -165,10 +166,10 @@ app.post('/reviews', (req, res) => {
   console.log('Body:', req.body);
   const { name, rating, text, photo } = req.body;
   if (!name || !rating) {
-    console.log('Validation failed:', { name, rating });
+    console.log('Validation failed:', { name, rating, body: req.body });
     return res.status(400).json({ error: 'Имя и рейтинг обязательны' });
   }
-  console.log('DB insert params:', [name, rating, text || '', photo ? '[photo present]' : '[no photo]']);
+  console.log('DB insert params:', [name, rating, text || '', photo ? '[photo present]' : '[no photo]'], 'at', new Date().toISOString());
   db.run('INSERT INTO reviews (name, rating, text, photo) VALUES (?, ?, ?, ?)', [name, rating, text || '', photo || ''], function(err) {
     if (err) {
       console.error('DB error in /reviews:', err && err.stack ? err.stack : err);
