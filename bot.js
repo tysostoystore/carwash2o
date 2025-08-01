@@ -30,27 +30,32 @@ process.on('exit', (code) => {
   console.log('bot.js process exited with code', code);
 });
 
-bot.onText(/\/start/, (msg) => {
+bot.onText(/\/start/, async (msg) => {
   const chatId = msg.chat.id;
   console.log(`/start from chat ${chatId}`);
-  bot.sendMessage(chatId, 
-    '👋 Добро пожаловать в H2O Автомойку!\n\n' +
-    'Этот бот поможет вам быстро и удобно записаться на мойку через Telegram.\n' +
-    'Нажмите кнопку ниже, чтобы открыть фирменное приложение и выбрать услугу.',
-    {
-      reply_markup: {
-        inline_keyboard: [[
-          { text: '🚗 Открыть WebApp', web_app: { url: WEBAPP_URL } }
-        ]]
+  try {
+    await bot.sendMessage(chatId, 
+      '👋 Добро пожаловать в H2O Автомойку!\n\n' +
+      'Этот бот поможет вам быстро и удобно записаться на мойку через Telegram.\n' +
+      'Нажмите кнопку ниже, чтобы открыть фирменное приложение и выбрать услугу.',
+      {
+        reply_markup: {
+          inline_keyboard: [[
+            { text: '🚗 Открыть WebApp', web_app: { url: WEBAPP_URL } }
+          ]]
+        }
       }
-    }
-  );
+    );
+    // Авто-открытие WebApp: отправляем ссылку, если Telegram не поддерживает web_app-кнопки
+    await bot.sendMessage(chatId, `Если кнопка не сработала, просто перейдите по ссылке: ${WEBAPP_URL}`);
+  } catch (err) {
+    console.error('[TG] sendMessage error in /start:', err && err.response && err.response.body ? err.response.body : err);
+  }
 });
 
 // TEMP: Log chat_id and message_thread_id for group topics
+// Отключаем автоответ на каждое сообщение без /start (чтобы не было спама)
 bot.on('message', (msg) => {
   console.log('chat_id:', msg.chat?.id, 'thread_id:', msg.message_thread_id, 'text:', msg.text);
-  if (!msg.text.startsWith('/start')) {
-    bot.sendMessage(msg.chat.id, 'Чтобы начать, нажмите /start или используйте кнопку ниже!');
-  }
+  // Можно добавить кастомную логику, если нужно, но автоответ убран для предотвращения спама
 });
