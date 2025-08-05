@@ -150,6 +150,32 @@ app.post('/order', (req, res) => {
         }
         // Занять слот
         db.run('UPDATE slots SET status = "busy" WHERE date = ? AND time = ?', [date, time]);
+        // Отправить уведомление в Telegram
+        try {
+          const msg = `🆕 <b>Новая заявка</b>\n\n<b>Дата:</b> ${date}\n<b>Время:</b> ${time}\n<b>Услуга:</b> ${services}\n<b>Имя:</b> ${name}\n<b>Телефон:</b> ${phone}\n<b>Авто:</b> ${car}`;
+          bot.sendMessage(TG_CHAT_ID, msg, {
+            parse_mode: 'HTML',
+            message_thread_id: TG_ORDERS_THREAD_ID
+          }).then(tgRes => {
+            console.log('[TG] Order sent:', {
+              chat_id: TG_CHAT_ID,
+              thread_id: TG_ORDERS_THREAD_ID,
+              text: msg,
+              tg_message_id: tgRes && tgRes.message_id,
+              date: new Date().toISOString()
+            });
+          }).catch(e => {
+            console.error('[TG] Order ERROR:', {
+              chat_id: TG_CHAT_ID,
+              thread_id: TG_ORDERS_THREAD_ID,
+              text: msg,
+              error: e && e.response && e.response.body ? e.response.body : (e && e.stack ? e.stack : e),
+              date: new Date().toISOString()
+            });
+          });
+        } catch(e) {
+          console.error('[TG] Order send EXCEPTION:', e);
+        }
         res.json({ success: true, orderId: this.lastID });
       });
   });
