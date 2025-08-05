@@ -10,11 +10,51 @@
   <style>
     body { font-family: 'Inter', sans-serif; }
     .animate-fade-in {
-      animation: fadeInScale .3s cubic-bezier(.4,0,.2,1);
+      animation: fadeInScale .36s cubic-bezier(.4,0,.2,1);
+    }
+    .animate-fade-out {
+      animation: fadeOutScale .22s cubic-bezier(.4,0,.2,1) forwards;
     }
     @keyframes fadeInScale {
       0% { opacity: 0; transform: scale(.92); }
       100% { opacity: 1; transform: scale(1); }
+    }
+    @keyframes fadeOutScale {
+      0% { opacity: 1; transform: scale(1); }
+      100% { opacity: 0; transform: scale(.96); }
+    }
+    .animate-slide-up {
+      animation: slideUpFade .38s cubic-bezier(.4,0,.2,1);
+    }
+    @keyframes slideUpFade {
+      0% { opacity: 0; transform: translateY(32px) scale(.98); }
+      100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .btn-press {
+      transition: transform .12s cubic-bezier(.4,0,.2,1), box-shadow .12s;
+    }
+    .btn-press:active {
+      transform: scale(.96);
+      box-shadow: 0 2px 10px 0 #f9731622;
+    }
+    .btn-pop {
+      animation: btnPop .22s cubic-bezier(.4,0,.2,1);
+    }
+    @keyframes btnPop {
+      0% { transform: scale(.85); }
+      60% { transform: scale(1.08); }
+      100% { transform: scale(1); }
+    }
+    .fade-bg {
+      background: linear-gradient(180deg, #23272f 0%, #18181b 100%);
+      transition: background .4s cubic-bezier(.4,0,.2,1);
+    }
+    .blur-in {
+      animation: blurIn .38s cubic-bezier(.4,0,.2,1);
+    }
+    @keyframes blurIn {
+      0% { opacity: 0; filter: blur(10px); }
+      100% { opacity: 1; filter: blur(0); }
     }
     .star {
       transition: transform .15s cubic-bezier(.4,0,.2,1), color .15s;
