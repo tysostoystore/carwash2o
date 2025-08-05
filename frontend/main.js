@@ -155,7 +155,7 @@ function renderMainScreen() {
           <div class="text-gray-400 text-base font-medium mb-2">Чисто. Быстро. Удобно.</div>
         </div>
         <button class="w-full py-3 rounded-xl bg-[#f97316] text-white text-lg font-semibold shadow-sm hover:bg-[#fb923c] active:scale-95 transition mb-2 btn-glow" id="main-booking-btn">Записаться на мойку</button>
-        <button class="w-full py-3 rounded-xl bg-white text-gray-900 text-base font-medium shadow-sm hover:bg-gray-100 active:scale-95 transition mb-2 flex items-center justify-center gap-2">
+        <button id="review-btn" class="w-full py-3 rounded-xl bg-white text-gray-900 text-base font-medium shadow-sm hover:bg-gray-100 active:scale-95 transition mb-2 flex items-center justify-center gap-2">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 17.75l-6.172 3.243 1.179-6.873-5-4.873 6.9-1.002L12 2.25l3.093 6.995 6.9 1.002-5 4.873 1.179 6.873z"/></svg>
           Оставить отзыв
         </button>
@@ -179,7 +179,7 @@ function renderMainScreen() {
   if (btn) btn.onclick = renderBookingForm;
   
   // Обработчик для кнопки "Оставить отзыв"
-  const reviewBtn = app.querySelector('button:nth-child(2)');
+  const reviewBtn = document.getElementById('review-btn');
   if (reviewBtn) {
     reviewBtn.onclick = () => {
       const modal = document.getElementById('review-modal');
