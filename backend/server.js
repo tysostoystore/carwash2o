@@ -59,7 +59,7 @@ app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 // === Serve static frontend ===
 app.use(express.static(path.join(__dirname, '../frontend')));
 // SPA fallback: serve index.html for unknown routes (except API)
-app.get(/^\/(?!api|admin|backend|orders|reviews).*/, (req, res, next) => {
+app.get(/^\/(?!api|admin|backend|orders|reviews|catalog).*/, (req, res, next) => {
   if (req.accepts('html')) {
     res.sendFile(path.join(__dirname, '../frontend/index.html'));
   } else {
