@@ -145,32 +145,28 @@ app.get('/available-times', (req, res) => {
 
 // Создание заказа
 app.post('/order', (req, res) => {
-  const { services, date, time, name, phone, car } = req.body;
-  if (!services || !date || !time || !name || !phone || !car) {
+  const { name, phone, car, bodyType, category, service, price } = req.body;
+  if (!name || !phone || !car || !service) {
     return res.status(400).json({ error: 'Заполните все поля' });
   }
-  // Проверка слота
-  db.get('SELECT status FROM slots WHERE date = ? AND time = ?', [date, time], (err, slot) => {
-    if (err || !slot || slot.status !== 'free') {
-      return res.status(400).json({ error: 'Слот недоступен' });
-    }
-    // Создать заказ
-    db.run('INSERT INTO orders (services, date, time, name, phone, car, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [services, date, time, name, phone, car, 'новый'], function(err) {
-        if (err) {
-          console.error('DB error in /order (insert):', err);
-          return res.status(500).json({ error: 'Ошибка сервера (order:insert)' });
-        }
-        // Занять слот
-        db.run('UPDATE slots SET status = "busy" WHERE date = ? AND time = ?', [date, time]);
-        // Отправить уведомление в Telegram
-        try {
-          const msg = `🆕 <b>Новая заявка</b>\n\n<b>Дата:</b> ${date}\n<b>Время:</b> ${time}\n<b>Услуга:</b> ${services}\n<b>Имя:</b> ${name}\n<b>Телефон:</b> ${phone}\n<b>Авто:</b> ${car}`;
-          bot.sendMessage(TG_CHAT_ID, msg, {
-            parse_mode: 'HTML',
-            message_thread_id: TG_ORDERS_THREAD_ID
-          }).then(tgRes => {
-            console.log('[TG] Order sent:', {
+  // Создать заказ
+  const currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+  const currentTime = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  
+  db.run('INSERT INTO orders (services, date, time, name, phone, car, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [`${category}: ${service}`, currentDate, currentTime, name, phone, car, 'новый'], function(err) {
+      if (err) {
+        console.error('DB error in /order (insert):', err);
+        return res.status(500).json({ error: 'Ошибка сервера (order:insert)' });
+      }
+      // Отправить уведомление в Telegram
+      try {
+        const msg = `🆕 <b>Новая заявка</b>\n\n<b>Услуга:</b> ${service}\n<b>Тип кузова:</b> ${bodyType}\n<b>Цена:</b> ${price}₽\n<b>Имя:</b> ${name}\n<b>Телефон:</b> ${phone}\n<b>Авто:</b> ${car}`;
+        bot.sendMessage(TG_CHAT_ID, msg, {
+          parse_mode: 'HTML',
+          message_thread_id: TG_ORDERS_THREAD_ID
+        }).then(tgRes => {
+          console.log('[TG] Order sent:', {
               chat_id: TG_CHAT_ID,
               thread_id: TG_ORDERS_THREAD_ID,
               text: msg,
@@ -191,8 +187,7 @@ app.post('/order', (req, res) => {
         }
         res.json({ success: true, orderId: this.lastID });
       });
-  });
-});
+    });
 
 // === ОТЗЫВЫ ===
 // Добавить отзыв
