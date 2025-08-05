@@ -57,7 +57,6 @@ app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 
 
 // === Serve static frontend ===
-const path = require('path');
 app.use(express.static(path.join(__dirname, '../frontend')));
 // SPA fallback: serve index.html for unknown routes (except API)
 app.get(/^\/(?!api|admin|backend|orders|reviews).*/, (req, res, next) => {
