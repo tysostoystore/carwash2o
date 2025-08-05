@@ -3,7 +3,7 @@
 // Обработчик главной кнопки записи
 window.addEventListener('DOMContentLoaded', () => {
   const btn = document.getElementById('main-booking-btn');
-  if (btn) btn.onclick = () => switchScreen(renderBookingForm);
+  if (btn) btn.onclick = () => renderBookingForm();
 });
 // Для фронтенда: BACKEND_URL и WEBAPP_URL из config.js (Node-style)
 let BACKEND_URL = "";
@@ -81,7 +81,7 @@ async function renderBookingForm() {
       </form>
     `;
     // Назад на главную
-    app.querySelector('.back-btn').onclick = () => switchScreen(renderMainScreen);
+    app.querySelector('.back-btn').onclick = () => renderMainScreen();
     // Кузова
     app.querySelectorAll('[data-body]').forEach(btn => {
       btn.onclick = e => { selectedBody = +btn.dataset.body; render(); };
