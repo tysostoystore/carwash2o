@@ -17,6 +17,8 @@ const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
 const TelegramBot = require('node-telegram-bot-api');
+const fs = require('fs');
+const path = require('path');
 const app = express();
 
 // Временно разрешаем CORS для всех доменов для диагностики
@@ -115,6 +117,18 @@ app.get('/available-dates', (req, res) => {
     }
     res.json(rows.map(r => r.date));
   });
+});
+
+// Получение каталога услуг
+app.get('/catalog', (req, res) => {
+  try {
+    const catalogPath = path.join(__dirname, '..', 'services_catalog.json');
+    const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
+    res.json(catalog);
+  } catch (err) {
+    console.error('Error loading catalog:', err);
+    res.status(500).json({ error: 'Ошибка загрузки каталога услуг' });
+  }
 });
 
 // Получение доступного времени на дату
