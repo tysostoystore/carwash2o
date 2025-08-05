@@ -177,6 +177,18 @@ function renderMainScreen() {
   // Повторно назначаем обработчик для кнопки записи
   const btn = document.getElementById('main-booking-btn');
   if (btn) btn.onclick = renderBookingForm;
+  
+  // Обработчик для кнопки "Оставить отзыв"
+  const reviewBtn = app.querySelector('button:nth-child(2)');
+  if (reviewBtn) {
+    reviewBtn.onclick = () => {
+      const modal = document.getElementById('review-modal');
+      if (modal) {
+        modal.classList.remove('modal-leave');
+        modal.classList.remove('hidden');
+      }
+    };
+  }
 }
 
 // Показываем главный экран при загрузке
