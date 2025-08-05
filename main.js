@@ -25,7 +25,7 @@ async function renderBookingForm() {
   // Загрузка каталога услуг
   let catalog;
   try {
-    catalog = await fetch('/services_catalog.json').then(r => r.json());
+    catalog = await fetch('../services_catalog.json').then(r => r.json());
   } catch {
     app.innerHTML = '<p class="text-red-400 text-center">Ошибка загрузки услуг</p>';
     return;
