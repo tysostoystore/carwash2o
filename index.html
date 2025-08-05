@@ -275,49 +275,7 @@
     }
   </script>
 
-  <script>
-    // Booking modal logic
-    const bookingModal = document.getElementById('booking-modal');
-    const closeBookingModal = document.getElementById('close-booking-modal');
-    // Open booking modal
-    document.querySelectorAll('button').forEach(btn => {
-      if (btn.textContent.trim() === 'Записаться на мойку') {
-        btn.addEventListener('click', () => {
-          bookingModal.classList.remove('modal-leave');
-          bookingModal.classList.remove('hidden');
-        });
-      }
-    });
-    // Close booking modal (with animation)
-    closeBookingModal.addEventListener('click', () => {
-      bookingModal.classList.add('modal-leave');
-      setTimeout(() => { bookingModal.classList.add('hidden'); bookingModal.classList.remove('modal-leave'); }, 220);
-    });
-    bookingModal.addEventListener('click', (e) => {
-      if (e.target === bookingModal) {
-        bookingModal.classList.add('modal-leave');
-        setTimeout(() => { bookingModal.classList.add('hidden'); bookingModal.classList.remove('modal-leave'); }, 220);
-      }
-    });
-    // Prevent form submit (stub) + loading spinner
-    const bookingSendBtn = document.getElementById('booking-send-btn');
-    const bookingSendText = document.getElementById('booking-send-text');
-    const bookingSendSpinner = document.getElementById('booking-send-spinner');
-    document.getElementById('booking-form').addEventListener('submit', e => {
-      e.preventDefault();
-      bookingSendBtn.disabled = true;
-      bookingSendText.classList.add('hidden');
-      bookingSendSpinner.classList.remove('hidden');
-      setTimeout(() => {
-        bookingSendBtn.disabled = false;
-        bookingSendText.classList.remove('hidden');
-        bookingSendSpinner.classList.add('hidden');
-        bookingModal.classList.add('modal-leave');
-        setTimeout(() => { bookingModal.classList.add('hidden'); bookingModal.classList.remove('modal-leave'); }, 220);
-      }, 1200);
-      // TODO: Wire up with variables and backend logic
-    });
-  </script>
+
   <script src="config.js"></script>
   <script src="main.js"></script>
 </body>
