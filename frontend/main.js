@@ -104,6 +104,14 @@ async function renderBookingForm() {
     app.querySelectorAll('[data-srv]').forEach(btn => {
       btn.onclick = e => { selectedService = +btn.dataset.srv; render(); };
     });
+    // --- ПОЛЯ ФОРМЫ: сохраняем значения между рендерами ---
+    if (typeof window.userName === 'undefined') window.userName = '';
+    if (typeof window.userPhone === 'undefined') window.userPhone = '';
+    if (typeof window.userCar === 'undefined') window.userCar = '';
+    const form = app.querySelector('#booking-form');
+    form.querySelector('[name=name]').oninput = e => { window.userName = e.target.value; };
+    form.querySelector('[name=phone]').oninput = e => { window.userPhone = e.target.value; };
+    form.querySelector('[name=car]').oninput = e => { window.userCar = e.target.value; };
     // --- КАЛЕНДАРЬ + GRID ВРЕМЕНИ (Flowbite style) ---
     // Состояния — выносим selectedDate/selectedTime во внешний scope, чтобы не сбрасывались между рендерами
     // Всегда вычисляем московскую сегодняшнюю дату
@@ -201,59 +209,31 @@ async function renderBookingForm() {
     }
     renderTimes();
     // --- END КАЛЕНДАРЬ + GRID ---
-    // Сабмит
+    // Сабмит формы заявки (только один обработчик)
     app.querySelector('#booking-form').onsubmit = async e => {
       e.preventDefault();
-      if (!selectedDate || !selectedTime) {
-        document.getElementById('form-msg').textContent = 'Пожалуйста, выберите дату и время';
-        return;
-      }
-      // Добавляем выбранные дату и время в FormData
-      const fd = new FormData(app.querySelector('#booking-form'));
-      fd.set('date', selectedDate);
-      fd.set('time', selectedTime);
-      // Отправка заявки
-      try {
-        const res = await fetch(BACKEND_URL + '/orders', {
-          method: 'POST',
-          body: fd
-        });
-        const result = await res.json();
-        if (result.success) {
-          document.getElementById('form-msg').textContent = 'Заявка успешно отправлена!';
-          // Очистить выбор
-          selectedDate = null;
-          selectedTime = null;
-          window.selectedDate = null;
-          window.selectedTime = null;
-          datepicker.querySelectorAll('button').forEach(b => b.classList.remove('bg-[#f97316]', 'border-[#f97316]', 'text-white'));
-          timegrid.querySelectorAll('button').forEach(b => b.classList.remove('bg-[#f97316]', 'border-[#f97316]', 'text-white'));
-          app.querySelector('#booking-form').reset();
-        } else {
-          document.getElementById('form-msg').textContent = result.error || 'Ошибка отправки';
-        }
-      } catch {
-        document.getElementById('form-msg').textContent = 'Ошибка сервера';
-      }
-    };
-    // Сабмит
-    app.querySelector('#booking-form').onsubmit = async e => {
-      e.preventDefault();
-      const fd = new FormData(e.target);
       const msg = app.querySelector('#form-msg');
       msg.textContent = '';
+      msg.className = 'text-center text-sm mt-2';
+      // Проверка выбора даты и времени
+      if (!selectedDate || !selectedTime) {
+        msg.textContent = 'Пожалуйста, выберите дату и время';
+        msg.className = 'text-red-400 text-center mt-2';
+        return;
+      }
+      const fd = new FormData(e.target);
+      const body = {
+        name: fd.get('name'),
+        phone: fd.get('phone'),
+        car: fd.get('car'),
+        bodyType: catalog.bodyTypes[selectedBody],
+        category: catalog.categories[selectedCategory].name,
+        service: catalog.categories[selectedCategory].services[selectedService].name,
+        price: catalog.categories[selectedCategory].services[selectedService].prices[selectedBody],
+        date: selectedDate,
+        time: selectedTime
+      };
       try {
-        const body = {
-          name: fd.get('name'),
-          phone: fd.get('phone'),
-          car: fd.get('car'),
-          bodyType: catalog.bodyTypes[selectedBody],
-          category: catalog.categories[selectedCategory].name,
-          service: catalog.categories[selectedCategory].services[selectedService].name,
-          price: catalog.categories[selectedCategory].services[selectedService].prices[selectedBody],
-          date: app.querySelector('select[name="date"]').value,
-          time: app.querySelector('select[name="time"]').value
-        };
         const res = await fetch(BACKEND_URL + '/order', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -264,6 +244,12 @@ async function renderBookingForm() {
           msg.textContent = 'Заявка успешно отправлена!';
           msg.className = 'text-green-400 text-center mt-2';
           e.target.reset();
+          selectedDate = null;
+          selectedTime = null;
+          window.selectedDate = null;
+          window.selectedTime = null;
+          datepicker.querySelectorAll('button').forEach(b => b.classList.remove('bg-[#f97316]', 'border-[#f97316]', 'text-white'));
+          timegrid.querySelectorAll('button').forEach(b => b.classList.remove('bg-[#f97316]', 'border-[#f97316]', 'text-white'));
         } else {
           msg.textContent = data.error || 'Ошибка отправки заявки';
           msg.className = 'text-red-400 text-center mt-2';
@@ -272,7 +258,8 @@ async function renderBookingForm() {
         msg.textContent = 'Ошибка сервера';
         msg.className = 'text-red-400 text-center mt-2';
       }
-    }
+    };
+
   }
   // Иконки кузова
   function bodyIcon(i) {
