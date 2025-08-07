@@ -141,7 +141,7 @@ async function renderBookingForm() {
           }
         }
       }
-      const picker = new MobilePicker({
+      new WheelPicker({
         trigger: dateInput,
         title: 'Выберите дату и время',
         wheels: [
@@ -149,8 +149,7 @@ async function renderBookingForm() {
           { data: hours },
           { data: mins }
         ],
-        position: [dateIdx, hourIdx, minIdx],
-        onChange: function(indexArr, dataArr) {
+        onSelect: function(indexArr, dataArr) {
           // Проверка: если сегодня, нельзя выбрать прошедшее время
           let valid = true;
           if (indexArr[0] === 0) {
@@ -168,7 +167,6 @@ async function renderBookingForm() {
           timeInput.value = `${dataArr[1]}:${dataArr[2]}`;
         }
       });
-      picker.show();
     }
     dateInput.onclick = timeInput.onclick = openWheelPicker;
     // --- END WHEEL PICKER ---
