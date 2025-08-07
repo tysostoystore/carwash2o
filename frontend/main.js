@@ -155,10 +155,14 @@ async function renderBookingForm() {
       return h * 60 + m > currentMinutes;
     });
     if (nextSlotIdx === -1) nextSlotIdx = 0;
-    // По умолчанию показываем только ближайшие 12 часов (24 слота)
     let showAllTimes = false;
     function renderTimes() {
-      let visibleTimes = showAllTimes ? times : times.slice(nextSlotIdx, nextSlotIdx + 24);
+      let visibleTimes;
+      if (isToday) {
+        visibleTimes = showAllTimes ? times : times.slice(nextSlotIdx, nextSlotIdx + 24);
+      } else {
+        visibleTimes = showAllTimes ? times : times.slice(0, 24);
+      }
       let html = visibleTimes.map((t, i) => {
         let [h, m] = t.split(':').map(Number);
         // Не выделяем ночные часы, все одинаково яркие
