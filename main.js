@@ -1,5 +1,83 @@
 // Логика для фронтенда: форма записи, мобильная, тёмная, всё на русском
 
+function renderServicesCategory(category, selectedBody, selectedService) {
+  // UX: для комплексов — горизонтальный скролл, для услуг — вертикальный collapsible
+  const isComplex = category.id === 'complex';
+  const maxVisible = 5;
+  let html = '';
+
+  if (isComplex) {
+    // Горизонтальный скролл карточек
+    html += `<div class="flex gap-3 overflow-x-auto pb-2 snap-x">
+      ${category.services.map((srv, i) => `
+        <button type="button" class="min-w-[220px] max-w-[80vw] snap-center flex flex-col items-start rounded-2xl px-4 py-4 bg-gray-800 shadow-md transition-all duration-150 border-2 ${selectedService===i?'border-[#f97316]':'border-gray-800'} focus:outline-none group btn-press relative" data-srv="${i}">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="text-2xl">${serviceIcon(srv.name)}</span>
+            <span class="font-semibold text-base text-white">${srv.name}</span>
+            ${srv.promo?'<span class="ml-2 inline-block bg-[#f97316] text-xs text-white rounded px-2 py-0.5">АКЦИЯ</span>':''}
+          </div>
+          <div class="flex items-center justify-between w-full">
+            <span class="text-sm text-gray-400">${category.bodyTypeLabel || ''}${category.bodyTypeLabel?': ':''}${srv.prices[selectedBody]}₽</span>
+            <span class="ml-2 text-[#f97316] text-lg">${selectedService===i?'✓':''}</span>
+          </div>
+        </button>
+      `).join('')}
+    </div>`;
+  } else {
+    // Вертикальный список карточек, collapsible если длинный
+    const visible = category.services.slice(0, maxVisible);
+    const hidden = category.services.slice(maxVisible);
+    html += `<div class="flex flex-col gap-2">
+      ${visible.map((srv, i) => `
+        <button type="button" class="flex flex-col items-start rounded-2xl px-4 py-4 bg-gray-800 shadow-md transition-all duration-150 border-2 ${selectedService===i?'border-[#f97316]':'border-gray-800'} focus:outline-none group btn-press relative" data-srv="${i}">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="text-2xl">${serviceIcon(srv.name)}</span>
+            <span class="font-semibold text-base text-white">${srv.name}</span>
+            ${srv.promo?'<span class="ml-2 inline-block bg-[#f97316] text-xs text-white rounded px-2 py-0.5">АКЦИЯ</span>':''}
+          </div>
+          <div class="flex items-center justify-between w-full">
+            <span class="text-sm text-gray-400">${srv.prices[selectedBody]}₽</span>
+            <span class="ml-2 text-[#f97316] text-lg">${selectedService===i?'✓':''}</span>
+          </div>
+        </button>
+      `).join('')}
+      ${hidden.length > 0 ? `
+        <div id="show-more-block" class="flex flex-col gap-2 mt-1">
+          <button type="button" class="w-full py-2 rounded-lg bg-gray-700 text-gray-300 hover:bg-[#f97316] hover:text-white font-semibold transition-all btn-press" onclick="this.nextElementSibling.classList.remove('hidden');this.remove()">Показать ещё</button>
+          <div class="hidden">
+            ${hidden.map((srv, i) => `
+              <button type="button" class="flex flex-col items-start rounded-2xl px-4 py-4 bg-gray-800 shadow-md transition-all duration-150 border-2 ${selectedService===i+maxVisible?'border-[#f97316]':'border-gray-800'} focus:outline-none group btn-press relative" data-srv="${i+maxVisible}">
+                <div class="flex items-center gap-2 mb-2">
+                  <span class="text-2xl">${serviceIcon(srv.name)}</span>
+                  <span class="font-semibold text-base text-white">${srv.name}</span>
+                  ${srv.promo?'<span class=\'ml-2 inline-block bg-[#f97316] text-xs text-white rounded px-2 py-0.5\'>АКЦИЯ</span>':''}
+                </div>
+                <div class="flex items-center justify-between w-full">
+                  <span class="text-sm text-gray-400">${srv.prices[selectedBody]}₽</span>
+                  <span class="ml-2 text-[#f97316] text-lg">${selectedService===i+maxVisible?'✓':''}</span>
+                </div>
+              </button>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
+    </div>`;
+  }
+  return html;
+}
+
+function serviceIcon(name) {
+  // Можно заменить на SVG или эмодзи для разных типов услуг
+  if (/комплекс|lux|lux|super|aqua/i.test(name)) return '🚗';
+  if (/мойка/i.test(name)) return '🧽';
+  if (/антидождь|стёкла/i.test(name)) return '💧';
+  if (/керамик/i.test(name)) return '🛡️';
+  if (/чистка|салон/i.test(name)) return '🧼';
+  if (/предпродаж/i.test(name)) return '🏁';
+  if (/днищ/i.test(name)) return '🔧';
+  return '✨';
+}
+
 // Обработчик главной кнопки записи
 window.addEventListener('DOMContentLoaded', () => {
   const btn = document.getElementById('main-booking-btn');
@@ -60,15 +138,7 @@ async function renderBookingForm() {
             `).join('')}
           </div>
           <div class="flex flex-col gap-2">
-            ${catalog.categories[selectedCategory].services.map((srv, i) => `
-              <button type="button" class="flex items-center justify-between w-full rounded-xl px-4 py-3 bg-gray-800 text-left ${selectedService===i?'ring-2 ring-[#f97316]':''} focus:outline-none transition-all group" data-srv="${i}">
-                <span class="flex flex-col">
-                  <span class="font-semibold text-white">${srv.name}</span>
-                  <span class="text-sm text-gray-400">${srv.promo?'<span class=\'inline-block bg-[#f97316] text-xs text-white rounded px-2 py-0.5 mr-2\'>АКЦИЯ</span>':''}${catalog.bodyTypes[selectedBody]} — <span class="font-bold text-[#f97316]">${srv.prices[selectedBody]}₽</span></span>
-                </span>
-                <span class="ml-2 text-[#f97316] text-lg">${selectedService===i?'✓':''}</span>
-              </button>
-            `).join('')}
+            ${renderServicesCategory(catalog.categories[selectedCategory], selectedBody, selectedService)}
           </div>
         </div>
         <div class="flex flex-col gap-3 mt-4">
