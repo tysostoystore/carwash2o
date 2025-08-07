@@ -106,7 +106,9 @@ async function renderBookingForm() {
     });
     // --- КАЛЕНДАРЬ + GRID ВРЕМЕНИ (Flowbite style) ---
     // Состояния — выносим selectedDate/selectedTime во внешний scope, чтобы не сбрасывались между рендерами
-    if (typeof window.selectedDate === 'undefined') window.selectedDate = null;
+    // Всегда вычисляем московскую сегодняшнюю дату
+    const todayStr = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Moscow' })).toISOString().slice(0,10);
+    if (typeof window.selectedDate === 'undefined' || window.selectedDate === null) window.selectedDate = todayStr;
     if (typeof window.selectedTime === 'undefined') window.selectedTime = null;
     let selectedDate = window.selectedDate;
     let selectedTime = window.selectedTime;
@@ -135,9 +137,8 @@ async function renderBookingForm() {
       btn.onclick = () => {
         selectedDate = btn.dataset.date;
         window.selectedDate = selectedDate;
-        // Перерисовать календарь для подсветки
-        datepicker.querySelectorAll('button').forEach(b => b.classList.remove('bg-[#f97316]', 'border-[#f97316]', 'text-white'));
-        btn.classList.add('bg-[#f97316]', 'border-[#f97316]', 'text-white');
+        // Не сбрасываем выбранное время при смене даты
+        render();
       };
     });
     // Время — круглосуточно, шаг 30 мин (00:00–23:30)
@@ -147,22 +148,24 @@ async function renderBookingForm() {
       times.push(`${pad(h)}:00`);
       times.push(`${pad(h)}:30`);
     }
-    // Используем уже объявленный now выше
-    let isToday = selectedDate === now.toISOString().slice(0,10);
-    let currentMinutes = now.getHours() * 60 + now.getMinutes();
-    let nextSlotIdx = times.findIndex(t => {
-      let [h, m] = t.split(':').map(Number);
-      return h * 60 + m > currentMinutes;
-    });
-    if (nextSlotIdx === -1) nextSlotIdx = 0;
     let showAllTimes = false;
     // Добавляем вертикальный скролл для timegrid
     timegrid.className = "grid grid-cols-3 gap-2 max-h-72 md:max-h-96 overflow-y-auto scroll-smooth";
     timegrid.style.scrollBehavior = 'smooth';
     function renderTimes() {
+      // Пересчитываем now и всё, что зависит от времени, при каждом рендере
+      const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Moscow' }));
+      const todayStr = now.toISOString().slice(0,10);
+      let isToday = selectedDate === todayStr;
+      let currentMinutes = now.getHours() * 60 + now.getMinutes();
+      let nextSlotIdx = times.findIndex(t => {
+        let [h, m] = t.split(':').map(Number);
+        return h * 60 + m > currentMinutes;
+      });
+      if (nextSlotIdx === -1) nextSlotIdx = 0;
       let visibleTimes;
       if (isToday) {
-        visibleTimes = times.slice(nextSlotIdx);
+        visibleTimes = times.filter((t, idx) => idx >= nextSlotIdx);
       } else {
         visibleTimes = times;
       }
