@@ -88,6 +88,23 @@ const db = new sqlite3.Database('/app/backend/data/carwash.db', (err) => {
         console.log('Table reviews ensured.');
       }
     });
+    // Автоматическое создание таблицы orders при запуске
+    db.run(`CREATE TABLE IF NOT EXISTS orders (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      services TEXT NOT NULL,
+      date TEXT NOT NULL,
+      time TEXT NOT NULL,
+      name TEXT NOT NULL,
+      phone TEXT NOT NULL,
+      car TEXT NOT NULL,
+      status TEXT NOT NULL
+    )`, (err) => {
+      if (err) {
+        console.error('Could not ensure orders table:', err);
+      } else {
+        console.log('Table orders ensured.');
+      }
+    });
   }
 });
 
