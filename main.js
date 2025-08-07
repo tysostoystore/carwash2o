@@ -156,12 +156,15 @@ async function renderBookingForm() {
     });
     if (nextSlotIdx === -1) nextSlotIdx = 0;
     let showAllTimes = false;
+    // Добавляем вертикальный скролл для timegrid
+    timegrid.className = "grid grid-cols-3 gap-2 max-h-72 md:max-h-96 overflow-y-auto scroll-smooth";
+    timegrid.style.scrollBehavior = 'smooth';
     function renderTimes() {
       let visibleTimes;
       if (isToday) {
-        visibleTimes = showAllTimes ? times : times.slice(nextSlotIdx, nextSlotIdx + 24);
+        visibleTimes = times.slice(nextSlotIdx);
       } else {
-        visibleTimes = showAllTimes ? times : times.slice(0, 24);
+        visibleTimes = times;
       }
       let html = visibleTimes.map((t, i) => {
         let [h, m] = t.split(':').map(Number);
