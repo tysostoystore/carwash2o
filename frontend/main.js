@@ -108,23 +108,26 @@ async function renderBookingForm() {
     // Состояния
     let selectedDate = null;
     let selectedTime = null;
-    // Генерируем 7 дней вперёд
+    // Генерируем 7 дней вперёд, лаконичные подписи
     const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Moscow' }));
     const pad = n => n.toString().padStart(2, '0');
     const dates = [];
+    const weekDays = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
+    const monthShort = ['янв.', 'февр.', 'марта', 'апр.', 'мая', 'июня', 'июля', 'авг.', 'сент.', 'окт.', 'нояб.', 'дек.'];
     for (let i = 0; i < 7; i++) {
       const d = new Date(now);
       d.setDate(now.getDate() + i);
-      let label = i === 0 ? 'Сегодня' : (i === 1 ? 'Завтра' : d.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'short' }));
+      let label = i === 0 ? 'Сегодня' : (i === 1 ? 'Завтра' : `${weekDays[d.getDay()]}, ${d.getDate()} ${monthShort[d.getMonth()]}`);
       dates.push({
         value: d.toISOString().slice(0,10),
-        label: label + ' ' + d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
+        label
       });
     }
-    // Рендер календаря
+    // Рендер календаря — центрируем, gap 3, min-w
     const datepicker = app.querySelector('#datepicker');
+    datepicker.className = "flex flex-wrap justify-center gap-3";
     datepicker.innerHTML = dates.map((d, i) => `
-      <button type="button" class="px-3 py-2 rounded-lg border text-sm font-semibold transition-all focus:outline-none ${selectedDate===d.value?'bg-[#f97316] border-[#f97316] text-white':'bg-gray-900 border-gray-700 text-gray-200 hover:border-[#f97316] hover:text-[#f97316]'}" data-date="${d.value}">${d.label}</button>
+      <button type="button" class="min-w-[90px] px-3 py-2 rounded-lg border text-sm font-semibold transition-all focus:outline-none ${selectedDate===d.value?'bg-[#f97316] border-[#f97316] text-white':'bg-gray-900 border-gray-700 text-gray-200 hover:border-[#f97316] hover:text-[#f97316]'}" data-date="${d.value}">${d.label}</button>
     `).join('');
     datepicker.querySelectorAll('button').forEach(btn => {
       btn.onclick = () => {
@@ -155,12 +158,11 @@ async function renderBookingForm() {
       let visibleTimes = showAllTimes ? times : times.slice(nextSlotIdx, nextSlotIdx + 24);
       let html = visibleTimes.map((t, i) => {
         let [h, m] = t.split(':').map(Number);
-        let isNight = h < 7 || h >= 22;
+        // Не выделяем ночные часы, все одинаково яркие
         let isPast = isToday && (h * 60 + m <= currentMinutes);
         let classes = [
           'py-2 rounded-lg border text-sm font-semibold transition-all focus:outline-none',
           selectedTime===t ? 'bg-[#f97316] border-[#f97316] text-white' : 'bg-gray-900 border-gray-700 text-gray-200 hover:border-[#f97316] hover:text-[#f97316]',
-          isNight ? 'opacity-60' : '',
           isPast ? 'opacity-30 pointer-events-none' : ''
         ].join(' ');
         return `<button type="button" class="${classes}" data-time="${t}" ${isPast?'disabled':''}>${t}</button>`;
