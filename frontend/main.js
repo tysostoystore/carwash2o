@@ -76,8 +76,14 @@ async function renderBookingForm() {
           <input name="phone" type="tel" required class="w-full rounded-lg bg-gray-900/90 text-white border border-gray-700 focus:ring-2 focus:ring-[#f97316] focus:border-[#f97316] outline-none px-4 py-3 placeholder-gray-400 transition-all duration-200" placeholder="Телефон">
           <input name="car" type="text" required class="w-full rounded-lg bg-gray-900/90 text-white border border-gray-700 focus:ring-2 focus:ring-[#f97316] focus:border-[#f97316] outline-none px-4 py-3 placeholder-gray-400 transition-all duration-200" placeholder="Марка и модель авто">
           <div class="flex flex-col gap-2">
-            <input type="text" name="date" id="booking-date" readonly required placeholder="Выберите дату" class="w-full rounded-lg bg-gray-900/90 text-white border border-gray-700 focus:ring-2 focus:ring-[#f97316] focus:border-[#f97316] outline-none px-4 py-3 placeholder-gray-400 transition-all duration-200 mt-2 cursor-pointer" />
-            <input type="text" name="time" id="booking-time" readonly required placeholder="Выберите время" class="w-full rounded-lg bg-gray-900/90 text-white border border-gray-700 focus:ring-2 focus:ring-[#f97316] focus:border-[#f97316] outline-none px-4 py-3 placeholder-gray-400 transition-all duration-200 cursor-pointer" />
+            <div>
+              <div class="mb-2 text-base font-semibold text-gray-200">Дата</div>
+              <div id="datepicker" class="flex flex-wrap gap-2"></div>
+            </div>
+            <div>
+              <div class="mb-2 text-base font-semibold text-gray-200">Время</div>
+              <div id="timegrid" class="grid grid-cols-3 gap-2"></div>
+            </div>
           </div>
         </div>
         <button type="submit" class="w-full py-3 rounded-lg bg-gradient-to-r from-[#f97316] to-[#fb923c] hover:from-[#fb923c] hover:to-[#f97316] text-white font-bold shadow-lg transition-all duration-200 transform hover:-translate-y-0.5 active:scale-95 focus:outline-none focus:ring-2 focus:ring-[#f97316] text-lg">Записаться на услугу за ${catalog.categories[selectedCategory].services[selectedService].prices[selectedBody]}₽</button>
@@ -98,78 +104,120 @@ async function renderBookingForm() {
     app.querySelectorAll('[data-srv]').forEach(btn => {
       btn.onclick = e => { selectedService = +btn.dataset.srv; render(); };
     });
-    // --- WHEEL PICKER (mobileSelect.js) ---
-    const dateInput = app.querySelector('#booking-date');
-    const timeInput = app.querySelector('#booking-time');
-    // Санкт-Петербург UTC+3
+    // --- КАЛЕНДАРЬ + GRID ВРЕМЕНИ (Flowbite style) ---
+    // Состояния
+    let selectedDate = null;
+    let selectedTime = null;
+    // Генерируем 7 дней вперёд
     const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Moscow' }));
     const pad = n => n.toString().padStart(2, '0');
-    // Генерируем 7 дней вперёд
-    let dates = [];
+    const dates = [];
     for (let i = 0; i < 7; i++) {
       const d = new Date(now);
       d.setDate(now.getDate() + i);
-      let label;
-      if (i === 0) label = 'Сегодня';
-      else if (i === 1) label = 'Завтра';
-      else label = d.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'short' });
+      let label = i === 0 ? 'Сегодня' : (i === 1 ? 'Завтра' : d.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'short' }));
       dates.push({
         value: d.toISOString().slice(0,10),
         label: label + ' ' + d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
       });
     }
-    // Часы и минуты
-    const hours = [];
-    for (let h = 9; h <= 21; h++) hours.push(pad(h));
-    const mins = ['00', '30'];
-    // --- Открытие wheel picker ---
-    function openWheelPicker() {
-      // Определить ближайшее валидное время для preselect
-      let dateIdx = 0, hourIdx = 0, minIdx = 0;
-      if (dateIdx === 0) {
-        let found = false;
-        for (let h = 9; h <= 21 && !found; h++) {
-          for (let m of mins) {
-            const slot = new Date(now);
-            slot.setHours(h, +m, 0, 0);
-            if (slot > now) {
-              hourIdx = h - 9;
-              minIdx = m === '30' ? 1 : 0;
-              found = true;
-              break;
-            }
-          }
-        }
-      }
-      new WheelPicker({
-        trigger: dateInput,
-        title: 'Выберите дату и время',
-        wheels: [
-          { data: dates.map(d => d.label) },
-          { data: hours },
-          { data: mins }
-        ],
-        onSelect: function(indexArr, dataArr) {
-          // Проверка: если сегодня, нельзя выбрать прошедшее время
-          let valid = true;
-          if (indexArr[0] === 0) {
-            const h = +hours[indexArr[1]], m = +mins[indexArr[2]];
-            const slot = new Date(now);
-            slot.setHours(h, m, 0, 0);
-            if (slot <= now) valid = false;
-          }
-          if (!valid) {
-            alert('Выберите будущее время!');
-            return;
-          }
-          dateInput.value = dataArr[0];
-          dateInput.dataset.value = dates[indexArr[0]].value;
-          timeInput.value = `${dataArr[1]}:${dataArr[2]}`;
-        }
-      });
+    // Рендер календаря
+    const datepicker = app.querySelector('#datepicker');
+    datepicker.innerHTML = dates.map((d, i) => `
+      <button type="button" class="px-3 py-2 rounded-lg border text-sm font-semibold transition-all focus:outline-none ${selectedDate===d.value?'bg-[#f97316] border-[#f97316] text-white':'bg-gray-900 border-gray-700 text-gray-200 hover:border-[#f97316] hover:text-[#f97316]'}" data-date="${d.value}">${d.label}</button>
+    `).join('');
+    datepicker.querySelectorAll('button').forEach(btn => {
+      btn.onclick = () => {
+        selectedDate = btn.dataset.date;
+        // Перерисовать календарь для подсветки
+        datepicker.querySelectorAll('button').forEach(b => b.classList.remove('bg-[#f97316]', 'border-[#f97316]', 'text-white'));
+        btn.classList.add('bg-[#f97316]', 'border-[#f97316]', 'text-white');
+      };
+    });
+    // Время — круглосуточно, шаг 30 мин (00:00–23:30)
+    const timegrid = app.querySelector('#timegrid');
+    let times = [];
+    for (let h = 0; h < 24; h++) {
+      times.push(`${pad(h)}:00`);
+      times.push(`${pad(h)}:30`);
     }
-    dateInput.onclick = timeInput.onclick = openWheelPicker;
-    // --- END WHEEL PICKER ---
+    // Используем уже объявленный now выше
+    let isToday = selectedDate === now.toISOString().slice(0,10);
+    let currentMinutes = now.getHours() * 60 + now.getMinutes();
+    let nextSlotIdx = times.findIndex(t => {
+      let [h, m] = t.split(':').map(Number);
+      return h * 60 + m > currentMinutes;
+    });
+    if (nextSlotIdx === -1) nextSlotIdx = 0;
+    // По умолчанию показываем только ближайшие 12 часов (24 слота)
+    let showAllTimes = false;
+    function renderTimes() {
+      let visibleTimes = showAllTimes ? times : times.slice(nextSlotIdx, nextSlotIdx + 24);
+      let html = visibleTimes.map((t, i) => {
+        let [h, m] = t.split(':').map(Number);
+        let isNight = h < 7 || h >= 22;
+        let isPast = isToday && (h * 60 + m <= currentMinutes);
+        let classes = [
+          'py-2 rounded-lg border text-sm font-semibold transition-all focus:outline-none',
+          selectedTime===t ? 'bg-[#f97316] border-[#f97316] text-white' : 'bg-gray-900 border-gray-700 text-gray-200 hover:border-[#f97316] hover:text-[#f97316]',
+          isNight ? 'opacity-60' : '',
+          isPast ? 'opacity-30 pointer-events-none' : ''
+        ].join(' ');
+        return `<button type="button" class="${classes}" data-time="${t}" ${isPast?'disabled':''}>${t}</button>`;
+      }).join('');
+      if (!showAllTimes && times.length - nextSlotIdx > 24) {
+        html += `<button type="button" class="col-span-3 py-2 mt-2 rounded-lg border border-gray-700 text-gray-400 hover:text-[#f97316] hover:border-[#f97316] transition" id="show-all-times">Показать все слоты</button>`;
+      }
+      timegrid.innerHTML = html;
+      timegrid.querySelectorAll('button[data-time]').forEach(btn => {
+        btn.onclick = () => {
+          selectedTime = btn.dataset.time;
+          renderTimes();
+        };
+      });
+      const showAllBtn = timegrid.querySelector('#show-all-times');
+      if (showAllBtn) {
+        showAllBtn.onclick = () => {
+          showAllTimes = true;
+          renderTimes();
+        };
+      }
+    }
+    renderTimes();
+    // --- END КАЛЕНДАРЬ + GRID ---
+    // Сабмит
+    app.querySelector('#booking-form').onsubmit = async e => {
+      e.preventDefault();
+      if (!selectedDate || !selectedTime) {
+        document.getElementById('form-msg').textContent = 'Пожалуйста, выберите дату и время';
+        return;
+      }
+      // Добавляем выбранные дату и время в FormData
+      const fd = new FormData(app.querySelector('#booking-form'));
+      fd.set('date', selectedDate);
+      fd.set('time', selectedTime);
+      // Отправка заявки
+      try {
+        const res = await fetch(BACKEND_URL + '/orders', {
+          method: 'POST',
+          body: fd
+        });
+        const result = await res.json();
+        if (result.success) {
+          document.getElementById('form-msg').textContent = 'Заявка успешно отправлена!';
+          // Очистить выбор
+          selectedDate = null;
+          selectedTime = null;
+          datepicker.querySelectorAll('button').forEach(b => b.classList.remove('bg-[#f97316]', 'border-[#f97316]', 'text-white'));
+          timegrid.querySelectorAll('button').forEach(b => b.classList.remove('bg-[#f97316]', 'border-[#f97316]', 'text-white'));
+          app.querySelector('#booking-form').reset();
+        } else {
+          document.getElementById('form-msg').textContent = result.error || 'Ошибка отправки';
+        }
+      } catch {
+        document.getElementById('form-msg').textContent = 'Ошибка сервера';
+      }
+    };
     // Сабмит
     app.querySelector('#booking-form').onsubmit = async e => {
       e.preventDefault();
