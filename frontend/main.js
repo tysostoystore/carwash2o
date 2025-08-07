@@ -75,6 +75,23 @@ async function renderBookingForm() {
           <input name="name" type="text" required class="w-full rounded-lg bg-gray-900/90 text-white border border-gray-700 focus:ring-2 focus:ring-[#f97316] focus:border-[#f97316] outline-none px-4 py-3 placeholder-gray-400 transition-all duration-200" placeholder="Ваше имя">
           <input name="phone" type="tel" required class="w-full rounded-lg bg-gray-900/90 text-white border border-gray-700 focus:ring-2 focus:ring-[#f97316] focus:border-[#f97316] outline-none px-4 py-3 placeholder-gray-400 transition-all duration-200" placeholder="Телефон">
           <input name="car" type="text" required class="w-full rounded-lg bg-gray-900/90 text-white border border-gray-700 focus:ring-2 focus:ring-[#f97316] focus:border-[#f97316] outline-none px-4 py-3 placeholder-gray-400 transition-all duration-200" placeholder="Марка и модель авто">
+          <div class="flex flex-col gap-2">
+            <input type="text" name="date" id="booking-date" readonly required placeholder="Выберите дату" class="w-full rounded-lg bg-gray-900/90 text-white border border-gray-700 focus:ring-2 focus:ring-[#f97316] focus:border-[#f97316] outline-none px-4 py-3 placeholder-gray-400 transition-all duration-200 mt-2 cursor-pointer" />
+            <input type="text" name="time" id="booking-time" readonly required placeholder="Выберите время" class="w-full rounded-lg bg-gray-900/90 text-white border border-gray-700 focus:ring-2 focus:ring-[#f97316] focus:border-[#f97316] outline-none px-4 py-3 placeholder-gray-400 transition-all duration-200 cursor-pointer" />
+          </div>
+          <div id="wheel-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm hidden">
+            <div class="bg-[#23272f] rounded-2xl shadow-xl p-6 w-full max-w-xs mx-2 flex flex-col gap-4 relative animate-fade-in">
+              <div class="text-lg font-semibold text-white mb-2 text-center">Выберите дату и время</div>
+              <div id="wheel-date" class="simple-wheel mb-2"></div>
+              <div class="flex gap-2 justify-center items-center mb-2">
+                <div id="wheel-hour" class="simple-wheel"></div>
+                <span class="text-white text-lg">:</span>
+                <div id="wheel-min" class="simple-wheel"></div>
+              </div>
+              <button id="wheel-ok" class="w-full py-2 rounded-lg bg-gradient-to-r from-[#f97316] to-[#fb923c] text-white font-bold shadow-lg transition-all text-lg">Выбрать</button>
+              <button id="wheel-cancel" class="w-full py-2 rounded-lg bg-gray-700 text-white mt-1">Отмена</button>
+            </div>
+          </div>
         </div>
         <button type="submit" class="w-full py-3 rounded-lg bg-gradient-to-r from-[#f97316] to-[#fb923c] hover:from-[#fb923c] hover:to-[#f97316] text-white font-bold shadow-lg transition-all duration-200 transform hover:-translate-y-0.5 active:scale-95 focus:outline-none focus:ring-2 focus:ring-[#f97316] text-lg">Записаться на услугу за ${catalog.categories[selectedCategory].services[selectedService].prices[selectedBody]}₽</button>
         <div id="form-msg" class="text-center text-sm mt-2"></div>
@@ -94,6 +111,101 @@ async function renderBookingForm() {
     app.querySelectorAll('[data-srv]').forEach(btn => {
       btn.onclick = e => { selectedService = +btn.dataset.srv; render(); };
     });
+    // --- WHEEL PICKER (Simple Wheel) ---
+    const dateInput = app.querySelector('#booking-date');
+    const timeInput = app.querySelector('#booking-time');
+    const wheelModal = document.getElementById('wheel-modal');
+    const wheelDate = document.getElementById('wheel-date');
+    const wheelHour = document.getElementById('wheel-hour');
+    const wheelMin = document.getElementById('wheel-min');
+    const wheelOk = document.getElementById('wheel-ok');
+    const wheelCancel = document.getElementById('wheel-cancel');
+
+    // Санкт-Петербург UTC+3
+    const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Moscow' }));
+    const pad = n => n.toString().padStart(2, '0');
+
+    // Генерируем 7 дней вперёд
+    let dates = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(now);
+      d.setDate(now.getDate() + i);
+      let label;
+      if (i === 0) label = 'Сегодня';
+      else if (i === 1) label = 'Завтра';
+      else label = d.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'short' });
+      dates.push({
+        value: d.toISOString().slice(0,10),
+        label: label + ' ' + d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
+      });
+    }
+    // Часы и минуты
+    const hours = [];
+    for (let h = 9; h <= 21; h++) hours.push(pad(h));
+    const mins = ['00', '30'];
+
+    // --- Открытие wheel picker ---
+    function openWheelPicker() {
+      // wheel-date
+      wheelDate.innerHTML = '<ul>' + dates.map(d => `<li>${d.label}</li>`).join('') + '</ul>';
+      // wheel-hour
+      wheelHour.innerHTML = '<ul>' + hours.map(h => `<li>${h}</li>`).join('') + '</ul>';
+      // wheel-min
+      wheelMin.innerHTML = '<ul>' + mins.map(m => `<li>${m}</li>`).join('') + '</ul>';
+      // Выделить ближайшее валидное время
+      let dateIdx = 0, hourIdx = 0, minIdx = 0;
+      // Если сегодня — нельзя выбрать прошедшее время
+      if (dateIdx === 0) {
+        let found = false;
+        for (let h = 9; h <= 21 && !found; h++) {
+          for (let m of mins) {
+            const slot = new Date(now);
+            slot.setHours(h, +m, 0, 0);
+            if (slot > now) {
+              hourIdx = h - 9;
+              minIdx = m === '30' ? 1 : 0;
+              found = true;
+              break;
+            }
+          }
+        }
+      }
+      // Инициализация wheel picker
+      setTimeout(() => {
+        __SW__.selectListItemForIndex({ wheel: 'wheel-date', index: dateIdx });
+        __SW__.selectListItemForIndex({ wheel: 'wheel-hour', index: hourIdx });
+        __SW__.selectListItemForIndex({ wheel: 'wheel-min', index: minIdx });
+      }, 50);
+      wheelModal.classList.remove('hidden');
+    }
+    dateInput.onclick = timeInput.onclick = openWheelPicker;
+    // --- Закрытие ---
+    wheelCancel.onclick = () => wheelModal.classList.add('hidden');
+    // --- ОК ---
+    wheelOk.onclick = () => {
+      // Получить выбранные индексы
+      const dateIdx = __SW__.getIndexAndValOfSelectedListItem(wheelDate).index;
+      const hourIdx = __SW__.getIndexAndValOfSelectedListItem(wheelHour).index;
+      const minIdx = __SW__.getIndexAndValOfSelectedListItem(wheelMin).index;
+      // Проверка: если сегодня, нельзя выбрать прошедшее время
+      let valid = true;
+      if (dateIdx === 0) {
+        const h = +hours[hourIdx], m = +mins[minIdx];
+        const slot = new Date(now);
+        slot.setHours(h, m, 0, 0);
+        if (slot <= now) valid = false;
+      }
+      if (!valid) {
+        alert('Выберите будущее время!');
+        return;
+      }
+      // Записать значения
+      dateInput.value = dates[dateIdx].label;
+      dateInput.dataset.value = dates[dateIdx].value;
+      timeInput.value = `${hours[hourIdx]}:${mins[minIdx]}`;
+      wheelModal.classList.add('hidden');
+    };
+    // --- END WHEEL PICKER ---
     // Сабмит
     app.querySelector('#booking-form').onsubmit = async e => {
       e.preventDefault();
@@ -108,7 +220,9 @@ async function renderBookingForm() {
           bodyType: catalog.bodyTypes[selectedBody],
           category: catalog.categories[selectedCategory].name,
           service: catalog.categories[selectedCategory].services[selectedService].name,
-          price: catalog.categories[selectedCategory].services[selectedService].prices[selectedBody]
+          price: catalog.categories[selectedCategory].services[selectedService].prices[selectedBody],
+          date: app.querySelector('select[name="date"]').value,
+          time: app.querySelector('select[name="time"]').value
         };
         const res = await fetch(BACKEND_URL + '/order', {
           method: 'POST',
