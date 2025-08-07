@@ -105,9 +105,11 @@ async function renderBookingForm() {
       btn.onclick = e => { selectedService = +btn.dataset.srv; render(); };
     });
     // --- КАЛЕНДАРЬ + GRID ВРЕМЕНИ (Flowbite style) ---
-    // Состояния
-    let selectedDate = null;
-    let selectedTime = null;
+    // Состояния — выносим selectedDate/selectedTime во внешний scope, чтобы не сбрасывались между рендерами
+    if (typeof window.selectedDate === 'undefined') window.selectedDate = null;
+    if (typeof window.selectedTime === 'undefined') window.selectedTime = null;
+    let selectedDate = window.selectedDate;
+    let selectedTime = window.selectedTime;
     // Генерируем 7 дней вперёд, лаконичные подписи
     const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Moscow' }));
     const pad = n => n.toString().padStart(2, '0');
@@ -132,6 +134,7 @@ async function renderBookingForm() {
     datepicker.querySelectorAll('button').forEach(btn => {
       btn.onclick = () => {
         selectedDate = btn.dataset.date;
+        window.selectedDate = selectedDate;
         // Перерисовать календарь для подсветки
         datepicker.querySelectorAll('button').forEach(b => b.classList.remove('bg-[#f97316]', 'border-[#f97316]', 'text-white'));
         btn.classList.add('bg-[#f97316]', 'border-[#f97316]', 'text-white');
@@ -174,6 +177,7 @@ async function renderBookingForm() {
       timegrid.querySelectorAll('button[data-time]').forEach(btn => {
         btn.onclick = () => {
           selectedTime = btn.dataset.time;
+          window.selectedTime = selectedTime;
           renderTimes();
         };
       });
@@ -210,6 +214,8 @@ async function renderBookingForm() {
           // Очистить выбор
           selectedDate = null;
           selectedTime = null;
+          window.selectedDate = null;
+          window.selectedTime = null;
           datepicker.querySelectorAll('button').forEach(b => b.classList.remove('bg-[#f97316]', 'border-[#f97316]', 'text-white'));
           timegrid.querySelectorAll('button').forEach(b => b.classList.remove('bg-[#f97316]', 'border-[#f97316]', 'text-white'));
           app.querySelector('#booking-form').reset();
