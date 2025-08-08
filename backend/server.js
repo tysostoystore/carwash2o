@@ -5,29 +5,6 @@ process.on('uncaughtException', err => {
   console.error('Uncaught Exception:', err && err.stack ? err.stack : err);
   process.exit(1);
 });
-
-// Health endpoint for Fly.io checks and manual diagnostics
-app.get('/health', (req, res) => {
-  try {
-    // Pull current globals from bot or process
-    let botGlobals;
-    try { botGlobals = require('../bot'); } catch(e) { botGlobals = global; }
-    const health = {
-      ok: true,
-      time: new Date().toISOString(),
-      usersFile: path.join(__dirname, 'data', 'users.json'),
-      allUserIds: Array.isArray(botGlobals._allUserIds) ? botGlobals._allUserIds.length : 0,
-      badReviewUsers: Array.isArray(botGlobals._badReviewUsers) ? botGlobals._badReviewUsers.length : 0,
-      env: {
-        port: PORT,
-      }
-    };
-    res.json(health);
-  } catch (e) {
-    console.error('/health error:', e);
-    res.status(500).json({ ok: false, error: e.message || String(e) });
-  }
-});
 process.on('unhandledRejection', err => {
   console.error('Unhandled Rejection:', err && err.stack ? err.stack : err);
   process.exit(1);
