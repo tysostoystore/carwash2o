@@ -59,6 +59,11 @@ bot.on('message', async (msg) => {
       if (!global._mediaGroupLast) global._mediaGroupLast = {};
       global._mediaGroupLast[msg.media_group_id] = msg.message_id;
       // setTimeout нужен, чтобы дождаться всех сообщений альбома
+      // Автоочистка альбома из памяти через 3 минуты
+      setTimeout(() => {
+        delete global._mediaGroups[msg.media_group_id];
+        delete global._mediaGroupLast[msg.media_group_id];
+      }, 180000);
       setTimeout(() => {
         if (global._mediaGroupLast[msg.media_group_id] === msg.message_id) {
           bot.editMessageReplyMarkup({
@@ -141,6 +146,10 @@ bot.on('callback_query', async (query) => {
       for (const userId of TEST_USER_IDS) {
         await bot.sendMediaGroup(userId, media);
       }
+      // После рассылки полностью очищаем память от альбомов
+      if (global._mediaGroups) global._mediaGroups = {};
+      if (global._mediaGroupLast) global._mediaGroupLast = {};
+      if (global._lastMessages) global._lastMessages = [];
     }
     // Меняем клавиатуру на "✅ Отправлено"
     bot.editMessageReplyMarkup({ inline_keyboard: [[{ text: '✅ Отправлено', callback_data: 'done' }]] }, { chat_id: message.chat.id, message_id: message.message_id });
