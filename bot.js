@@ -2,7 +2,18 @@
 // Greets user and shows WebApp button
 const TelegramBot = require('node-telegram-bot-api');
 const fs = require('fs');
+const path = require('path');
 const USERS_PATH = __dirname + '/backend/data/users.json';
+// Ensure directory exists
+try {
+  const dir = path.dirname(USERS_PATH);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+    console.log('[INIT bot] Created users dir:', dir);
+  }
+} catch (e) {
+  console.error('[INIT bot] Failed to ensure users dir:', e);
+}
 // Загружаем user_id из файла
 function loadUsers() {
   try {
@@ -22,6 +33,18 @@ function saveUsers() {
       badReviewUsers: global._badReviewUsers
     }, null, 2));
   } catch(e) { console.error('Не удалось сохранить users.json', e); }
+}
+function removeUserFromLists(uid) {
+  if (!global._allUserIds) global._allUserIds = [];
+  if (!global._badReviewUsers) global._badReviewUsers = [];
+  const beforeAll = global._allUserIds.length;
+  const beforeBad = global._badReviewUsers.length;
+  global._allUserIds = global._allUserIds.filter(id => id !== uid);
+  global._badReviewUsers = global._badReviewUsers.filter(id => id !== uid);
+  if (beforeAll !== global._allUserIds.length || beforeBad !== global._badReviewUsers.length) {
+    console.log(`[BOT] Removed user ${uid} from lists due to 403 (blocked)`);
+    saveUsers();
+  }
 }
 loadUsers();
 const { TG_TOKEN, WEBAPP_URL } = require('./config.js');
@@ -247,16 +270,22 @@ bot.on('callback_query', async (query) => {
 
   // --- ОТПРАВИТЬ СЕБЕ: Одиночное сообщение ---
   if (data.startsWith('broadcast_self_')) {
-    const msg_id = parseInt(data.replace('broadcast_self_', ''));
-    const msg = (global._lastMessages || []).find(m => m.message_id === msg_id);
-    let authorId = msg?.from?.id || message.reply_to_message?.from?.id;
-    if (!authorId) return; // fallback: не отправлять если не найден автор
-    await bot.sendMessage(authorId, msg.text || msg.caption || '', {
-      parse_mode: 'HTML',
-      disable_web_page_preview: true
-    });
-    bot.editMessageReplyMarkup({ inline_keyboard: [[{ text: '✅ Отправить', callback_data: 'send' }]] }, { chat_id: message.chat.id, message_id: message.message_id });
-    return bot.answerCallbackQuery(query.id, { text: 'Отправлено автору!' });
+    try {
+      const msg_id = parseInt(data.replace('broadcast_self_', ''));
+      const msg = (global._lastMessages || []).find(m => m.message_id === msg_id) || message.reply_to_message;
+      const authorId = (msg && msg.from && msg.from.id) || (query && query.from && query.from.id);
+      if (!authorId) {
+        console.error('broadcast_self_: authorId not found');
+        return bot.answerCallbackQuery(query.id, { text: '❌ Автор не найден' });
+      }
+      const text = (msg && (msg.text || msg.caption)) || ' ';
+      await bot.sendMessage(authorId, text, { parse_mode: 'HTML', disable_web_page_preview: true });
+      await bot.editMessageReplyMarkup({ inline_keyboard: [[{ text: '✅ Отправлено', callback_data: 'sent' }]] }, { chat_id: message.chat.id, message_id: message.message_id });
+      return bot.answerCallbackQuery(query.id, { text: 'Отправлено автору!' });
+    } catch (e) {
+      console.error('broadcast_self_ error:', e);
+      return bot.answerCallbackQuery(query.id, { text: '❌ Ошибка отправки себе' });
+    }
   }
 
   // --- ОТПРАВИТЬ НЕДОВОЛЬНЫМ: Одиночное сообщение ---
@@ -293,6 +322,9 @@ bot.on('callback_query', async (query) => {
           await new Promise(resolve => setTimeout(resolve, 100));
         } catch (error) {
           console.error(`Ошибка отправки пользователю ${userId}:`, error.message);
+          if (error.response && error.response.statusCode === 403) {
+            removeUserFromLists(userId);
+          }
           // Продолжаем рассылку при ошибке
         }
       }
@@ -455,6 +487,9 @@ bot.on('callback_query', async (query) => {
           
         } catch (error) {
           console.error(`Ошибка отправки пользователю ${userId}:`, error.message);
+          if (error.response && error.response.statusCode === 403) {
+            removeUserFromLists(userId);
+          }
           errors.push(`${userId}: ${error.message}`);
           // Продолжаем при ошибке
         }

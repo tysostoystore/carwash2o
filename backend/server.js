@@ -5,6 +5,29 @@ process.on('uncaughtException', err => {
   console.error('Uncaught Exception:', err && err.stack ? err.stack : err);
   process.exit(1);
 });
+
+// Health endpoint for Fly.io checks and manual diagnostics
+app.get('/health', (req, res) => {
+  try {
+    // Pull current globals from bot or process
+    let botGlobals;
+    try { botGlobals = require('../bot'); } catch(e) { botGlobals = global; }
+    const health = {
+      ok: true,
+      time: new Date().toISOString(),
+      usersFile: path.join(__dirname, 'data', 'users.json'),
+      allUserIds: Array.isArray(botGlobals._allUserIds) ? botGlobals._allUserIds.length : 0,
+      badReviewUsers: Array.isArray(botGlobals._badReviewUsers) ? botGlobals._badReviewUsers.length : 0,
+      env: {
+        port: PORT,
+      }
+    };
+    res.json(health);
+  } catch (e) {
+    console.error('/health error:', e);
+    res.status(500).json({ ok: false, error: e.message || String(e) });
+  }
+});
 process.on('unhandledRejection', err => {
   console.error('Unhandled Rejection:', err && err.stack ? err.stack : err);
   process.exit(1);
@@ -54,6 +77,17 @@ const bot = new TelegramBot(TG_TOKEN, { polling: false });
 
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
+
+// Ensure data directory exists for users.json and sqlite
+try {
+  const dataDir = path.join(__dirname, 'data');
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+    console.log('[INIT] Created data directory:', dataDir);
+  }
+} catch (e) {
+  console.error('[INIT] Failed to ensure data directory:', e);
+}
 
 
 // === Serve static frontend ===
@@ -220,7 +254,10 @@ app.post('/reviews', (req, res) => {
   console.log('Method:', req.method);
   console.log('URL:', req.url);
   console.log('Body:', req.body);
-  const { name, rating, text, photo, tg_user_id, tg_username } = req.body;
+  let { name, rating, text, photo, tg_user_id, tg_username } = req.body;
+  // Приводим rating к числу для корректных сравнений и .repeat()
+  rating = Number(rating);
+  console.log('[REVIEWS] Normalized rating:', rating, 'tg_user_id:', tg_user_id, 'tg_username:', tg_username);
   if (!name || !rating) {
     console.log('Validation failed:', { name, rating, body: req.body });
     return res.status(400).json({ error: 'Имя и рейтинг обязательны' });
@@ -233,6 +270,7 @@ app.post('/reviews', (req, res) => {
       let botGlobals;
       try { botGlobals = require('../bot'); } catch(e) { botGlobals = global; }
       if (!botGlobals._badReviewUsers) botGlobals._badReviewUsers = [];
+      if (!botGlobals._allUserIds) botGlobals._allUserIds = [];
       if (tg_user_id && Number.isInteger(Number(tg_user_id))) {
         const uid = Number(tg_user_id);
         if (rating < 5) {
@@ -256,7 +294,7 @@ app.post('/reviews', (req, res) => {
         }
         // --- Сохраняем badReviewUsers и allUserIds в users.json ---
         try {
-          const usersPath = path.join(__dirname, 'data/users.json');
+          const usersPath = path.join(__dirname, 'data', 'users.json');
           let usersObj = { allUserIds: [], badReviewUsers: [] };
           if (fs.existsSync(usersPath)) {
             usersObj = JSON.parse(fs.readFileSync(usersPath, 'utf8'));
@@ -265,6 +303,7 @@ app.post('/reviews', (req, res) => {
           // Добавляем user_id в allUserIds, если его там нет
           if (uid && !usersObj.allUserIds.includes(uid)) usersObj.allUserIds.push(uid);
           fs.writeFileSync(usersPath, JSON.stringify(usersObj, null, 2));
+          console.log('[REVIEWS] users.json saved at', usersPath, '=>', usersObj);
         } catch(e) { console.error('Не удалось сохранить badReviewUsers/allUserIds в users.json:', e); }
       }
     } catch(e) { console.error('badReviewUsers update error:', e); }
@@ -273,7 +312,7 @@ app.post('/reviews', (req, res) => {
       return res.status(500).json({ error: 'Ошибка сервера (БД): ' + (err && err.message ? err.message : err) });
     }
     // Отправить уведомление в Telegram
-    const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+    const stars = '★'.repeat(Number(rating)) + '☆'.repeat(5 - Number(rating));
     let msg = `⭐️ Новый отзыв (${stars})\n<b>${name}</b>`;
     if (tg_username) {
       msg += `\n<b>Telegram:</b> <a href='https://t.me/${tg_username}'>@${tg_username}</a>`;
