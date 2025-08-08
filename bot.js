@@ -95,6 +95,7 @@ bot.on('message', async (msg) => {
   }
 
 // --- Обработка inline-кнопок ---
+if (!global._alreadyBroadcasted) global._alreadyBroadcasted = {};
 bot.on('callback_query', async (query) => {
   const { message, data } = query;
   if (!message || !data) return;
@@ -102,6 +103,10 @@ bot.on('callback_query', async (query) => {
   // --- ОТПРАВИТЬ ВСЕМ: Альбом ---
   if (data.startsWith('broadcast_media_')) {
     const media_group_id = data.replace('broadcast_media_', '');
+    if (global._alreadyBroadcasted['media_' + media_group_id]) {
+      return bot.answerCallbackQuery({ callback_query_id: query.id, text: 'Уже отправлено!' });
+    }
+    global._alreadyBroadcasted['media_' + media_group_id] = true;
     // Собираем все сообщения альбома из памяти
     const group = Object.values(global._mediaGroups || {}).flat().filter(m => m.media_group_id == media_group_id);
     if (group && group.length) {
@@ -141,6 +146,10 @@ bot.on('callback_query', async (query) => {
   // --- ОТПРАВИТЬ ВСЕМ: Одиночное сообщение ---
   if (data.startsWith('broadcast_')) {
     const msg_id = parseInt(data.replace('broadcast_', ''));
+    if (global._alreadyBroadcasted['msg_' + msg_id]) {
+      return bot.answerCallbackQuery({ callback_query_id: query.id, text: 'Уже отправлено!' });
+    }
+    global._alreadyBroadcasted['msg_' + msg_id] = true;
     // Получаем оригинальное сообщение через getChatMessageHistory (или из памяти, если нужно)
     // Для простоты: ищем в памяти среди последних сообщений
     const msg = (global._lastMessages || []).find(m => m.message_id === msg_id);
