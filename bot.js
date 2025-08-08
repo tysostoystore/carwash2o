@@ -30,6 +30,18 @@ process.on('exit', (code) => {
   console.log('bot.js process exited with code', code);
 });
 
+// --- Логируем все входящие сообщения для отладки рассылки ---
+bot.on('message', (msg) => {
+  console.log('[INCOMING MESSAGE]', {
+    chat_id: msg.chat && msg.chat.id,
+    message_thread_id: msg.message_thread_id,
+    from_id: msg.from && msg.from.id,
+    from_username: msg.from && msg.from.username,
+    text: msg.text,
+    date: msg.date
+  });
+});
+
 // --- Антиспам на приветствие ---
 const lastWelcome = {};
 
