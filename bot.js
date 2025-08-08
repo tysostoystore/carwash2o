@@ -94,7 +94,7 @@ bot.on('message', async (msg) => {
   });
 
   // --- Рассылка только себе из ветки "Рассылка" ---
-  const ADMIN_THREAD_ID = 82;
+  const ADMIN_THREAD_ID = 157;
   const ADMIN_GROUP_ID = -1002856721715;
   // --- Черновик + подтверждение ---
   if (
