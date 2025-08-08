@@ -180,7 +180,7 @@
       reviewSendText.classList.add('hidden');
       reviewSendSpinner.classList.remove('hidden');
       // Сбор данных
-      const name = document.querySelector('#review-modal input[name="name"]')?.value || 'Гость';
+      const name = document.querySelector('#review-modal input[name="name"]')?.value.trim() || 'Гость';
       const text = document.querySelector('#review-modal textarea')?.value || '';
       const rating = selectedRating;
       const photoInput = document.querySelector('#review-modal input[type="file"]');
