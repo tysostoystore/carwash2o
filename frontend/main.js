@@ -74,7 +74,7 @@ async function renderBookingForm() {
         </div>
         <div class="flex flex-col gap-3 mt-4">
           <input name="name" type="text" required class="w-full rounded-lg bg-gray-900/90 text-white border border-gray-700 focus:ring-2 focus:ring-[#f97316] focus:border-[#f97316] outline-none px-4 py-3 placeholder-gray-400 transition-all duration-200" placeholder="Ваше имя" value="${window.userName || ''}">
-          <input name="phone" type="tel" required class="w-full rounded-lg bg-gray-900/90 text-white border border-gray-700 focus:ring-2 focus:ring-[#f97316] focus:border-[#f97316] outline-none px-4 py-3 placeholder-gray-400 transition-all duration-200" placeholder="Телефон" value="${window.userPhone || ''}">
+          <input name="phone" type="tel" required class="w-full rounded-lg bg-gray-900/90 text-white border border-gray-700 focus:ring-2 focus:ring-[#f97316] focus:border-[#f97316] outline-none px-4 py-3 placeholder-gray-400 transition-all duration-200" placeholder="Телефон" value="${window.userPhone || ''}" maxlength="18" autocomplete="tel">
           <input name="car" type="text" required class="w-full rounded-lg bg-gray-900/90 text-white border border-gray-700 focus:ring-2 focus:ring-[#f97316] focus:border-[#f97316] outline-none px-4 py-3 placeholder-gray-400 transition-all duration-200" placeholder="Марка и модель авто" value="${window.userCar || ''}">
           <div class="flex flex-col gap-2">
             <div>
@@ -111,7 +111,46 @@ async function renderBookingForm() {
     if (typeof window.userCar === 'undefined') window.userCar = '';
     const form = app.querySelector('#booking-form');
     form.querySelector('[name=name]').oninput = e => { window.userName = e.target.value; };
+    // Маска телефона: +7 (___) ___-__-__ или 8 (___) ___-__-__
+    const phoneInput = form.querySelector('[name=phone]');
+    phoneInput.addEventListener('input', (e) => {
+      let val = e.target.value.replace(/\D/g, '');
+      if (val.startsWith('8')) {
+        val = '8' + val.slice(1, 11);
+      } else if (val.startsWith('7')) {
+        val = '+7' + val.slice(1, 11);
+      } else if (val.startsWith('9')) {
+        val = '+7' + val;
+      }
+      let formatted = '';
+      if (val.startsWith('+7')) {
+        formatted = '+7';
+        if (val.length > 2) formatted += ' (' + val.slice(2, 5);
+        if (val.length >= 5) formatted += ') ' + val.slice(5, 8);
+        if (val.length >= 8) formatted += '-' + val.slice(8, 10);
+        if (val.length >= 10) formatted += '-' + val.slice(10, 12);
+      } else if (val.startsWith('8')) {
+        formatted = '8';
+        if (val.length > 1) formatted += ' (' + val.slice(1, 4);
+        if (val.length >= 4) formatted += ') ' + val.slice(4, 7);
+        if (val.length >= 7) formatted += '-' + val.slice(7, 9);
+        if (val.length >= 9) formatted += '-' + val.slice(9, 11);
+      } else {
+        formatted = val;
+      }
+      e.target.value = formatted;
+      window.userPhone = e.target.value;
+    });
+    form.querySelector('[name=phone]').onblur = e => {
+      // Автоочистка, если номер невалиден
+      let val = e.target.value.replace(/\D/g, '');
+      if (!(val.length === 11 && (val.startsWith('7') || val.startsWith('8')))) {
+        e.target.value = '';
+        window.userPhone = '';
+      }
+    };
     form.querySelector('[name=phone]').oninput = e => { window.userPhone = e.target.value; };
+
     form.querySelector('[name=car]').oninput = e => { window.userCar = e.target.value; };
     // --- КАЛЕНДАРЬ + GRID ВРЕМЕНИ (Flowbite style) ---
     // Состояния — выносим selectedDate/selectedTime во внешний scope, чтобы не сбрасывались между рендерами
@@ -219,6 +258,13 @@ async function renderBookingForm() {
       // Проверка выбора даты и времени
       if (!selectedDate || !selectedTime) {
         msg.textContent = 'Пожалуйста, выберите дату и время';
+        msg.className = 'text-red-400 text-center mt-2';
+        return;
+      }
+      // Валидация телефона (маска)
+      const phoneVal = app.querySelector('input[name="phone"]').value.replace(/\D/g, '');
+      if (!(phoneVal.length === 11 && (phoneVal.startsWith('7') || phoneVal.startsWith('8')))) {
+        msg.textContent = 'Введите корректный номер: +7 (XXX) XXX-XX-XX или 8 (XXX) XXX-XX-XX';
         msg.className = 'text-red-400 text-center mt-2';
         return;
       }
