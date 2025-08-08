@@ -227,6 +227,22 @@ app.post('/reviews', (req, res) => {
   }
   console.log('DB insert params:', [name, rating, text || '', photo ? '[photo present]' : '[no photo]'], 'at', new Date().toISOString());
   db.run('INSERT INTO reviews (name, rating, text, photo) VALUES (?, ?, ?, ?)', [name, rating, text || '', photo || ''], function(err) {
+    // === Автоматическое обновление badReviewUsers ===
+    try {
+      // Подключаем global из бота
+      let botGlobals;
+      try { botGlobals = require('../bot'); } catch(e) { botGlobals = global; }
+      if (!botGlobals._badReviewUsers) botGlobals._badReviewUsers = [];
+      if (tg_user_id && Number.isInteger(Number(tg_user_id))) {
+        const uid = Number(tg_user_id);
+        if (rating < 5) {
+          if (!botGlobals._badReviewUsers.includes(uid)) botGlobals._badReviewUsers.push(uid);
+        } else {
+          // Если 5★ — удалить из badReviewUsers
+          botGlobals._badReviewUsers = botGlobals._badReviewUsers.filter(id => id !== uid);
+        }
+      }
+    } catch(e) { console.error('badReviewUsers update error:', e); }
     if (err) {
       console.error('DB error in /reviews:', err && err.stack ? err.stack : err);
       return res.status(500).json({ error: 'Ошибка сервера (БД): ' + (err && err.message ? err.message : err) });

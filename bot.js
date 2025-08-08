@@ -1,7 +1,29 @@
 // Telegram bot MVP for H2O Car Wash
 // Greets user and shows WebApp button
 const TelegramBot = require('node-telegram-bot-api');
-
+const fs = require('fs');
+const USERS_PATH = __dirname + '/users.json';
+// Загружаем user_id из файла
+function loadUsers() {
+  try {
+    const data = fs.readFileSync(USERS_PATH, 'utf8');
+    const obj = JSON.parse(data);
+    global._allUserIds = Array.isArray(obj.allUserIds) ? obj.allUserIds : [];
+    global._badReviewUsers = Array.isArray(obj.badReviewUsers) ? obj.badReviewUsers : [];
+  } catch(e) {
+    global._allUserIds = [];
+    global._badReviewUsers = [];
+  }
+}
+function saveUsers() {
+  try {
+    fs.writeFileSync(USERS_PATH, JSON.stringify({
+      allUserIds: global._allUserIds,
+      badReviewUsers: global._badReviewUsers
+    }, null, 2));
+  } catch(e) { console.error('Не удалось сохранить users.json', e); }
+}
+loadUsers();
 const { TG_TOKEN, WEBAPP_URL } = require('./config.js');
 
 const TOKEN = TG_TOKEN || 'REPLACE_ME'; // fallback for dev
@@ -32,6 +54,13 @@ process.on('exit', (code) => {
 
 // --- Логируем все входящие сообщения для отладки рассылки ---
 bot.on('message', async (msg) => {
+  // --- Сохраняем всех пользователей в память (in-memory) ---
+  if (!global._allUserIds) global._allUserIds = [];
+  const fromId = msg.from && msg.from.id;
+  if (fromId && !global._allUserIds.includes(fromId)) {
+    global._allUserIds.push(fromId);
+    saveUsers();
+  }
   console.log('[INCOMING MESSAGE]', {
     chat_id: msg.chat && msg.chat.id,
     message_thread_id: msg.message_thread_id,
@@ -51,7 +80,7 @@ bot.on('message', async (msg) => {
     msg.message_thread_id === ADMIN_THREAD_ID &&
     !msg.via_bot // чтобы бот не реагировал на свои рассылки
   ) {
-    // Для альбомов — сохраняем сообщения в память и кнопка только на последнем сообщении группы
+    // Для альбомов — сохраняем сообщения в память и делаем предпросмотр
     if (msg.media_group_id) {
       if (!global._mediaGroups) global._mediaGroups = {};
       if (!global._mediaGroups[msg.media_group_id]) global._mediaGroups[msg.media_group_id] = [];
@@ -64,50 +93,191 @@ bot.on('message', async (msg) => {
         delete global._mediaGroups[msg.media_group_id];
         delete global._mediaGroupLast[msg.media_group_id];
       }, 180000);
-      setTimeout(() => {
+      setTimeout(async () => {
         if (global._mediaGroupLast[msg.media_group_id] === msg.message_id) {
-          bot.editMessageReplyMarkup({
-            inline_keyboard: [[
-              { text: '✅ Отправить всем', callback_data: 'broadcast_media_' + msg.media_group_id },
-              { text: '✏️ Редактировать', callback_data: 'edit' }
-            ]]
-          }, {
-            chat_id: ADMIN_GROUP_ID,
-            message_id: msg.message_id
-          });
+          // --- ПРЕДПРОСМОТР АЛЬБОМА ---
+          const group = global._mediaGroups[msg.media_group_id] || [];
+          if (group.length) {
+            const media = group.map(m => {
+              if (m.photo && m.photo.length) {
+                return {
+                  type: 'photo',
+                  media: m.photo[m.photo.length - 1].file_id,
+                  caption: (m.caption || m.text ? 'ПРЕДПРОСМОТР\n' + (m.caption || m.text) : 'ПРЕДПРОСМОТР'),
+                  parse_mode: 'HTML'
+                };
+              } else if (m.video) {
+                return {
+                  type: 'video',
+                  media: m.video.file_id,
+                  caption: (m.caption || m.text ? 'ПРЕДПРОСМОТР\n' + (m.caption || m.text) : 'ПРЕДПРОСМОТР'),
+                  parse_mode: 'HTML'
+                };
+              } else if (m.document) {
+                return {
+                  type: 'document',
+                  media: m.document.file_id,
+                  caption: (m.caption || m.text ? 'ПРЕДПРОСМОТР\n' + (m.caption || m.text) : 'ПРЕДПРОСМОТР'),
+                  parse_mode: 'HTML'
+                };
+              }
+              return null;
+            }).filter(Boolean);
+            const preview = await bot.sendMediaGroup(ADMIN_GROUP_ID, media, { message_thread_id: ADMIN_THREAD_ID });
+            // Кнопки только на последнем сообщении предпросмотра
+            if (preview && preview.length) {
+              const lastPreviewId = preview[preview.length - 1].message_id;
+              bot.editMessageReplyMarkup({
+                inline_keyboard: [[
+                  { text: '📤 Себе', callback_data: 'broadcast_self_media_' + msg.media_group_id },
+                  { text: '✅ Всем', callback_data: 'broadcast_media_' + msg.media_group_id },
+                  { text: '😡 Недовольным', callback_data: 'broadcast_bad_media_' + msg.media_group_id },
+                  { text: '✏️ Редактировать', callback_data: 'edit' }
+                ]]
+              }, {
+                chat_id: ADMIN_GROUP_ID,
+                message_id: lastPreviewId
+              });
+            }
+          }
         }
       }, 800);
     } else {
       // Для всех остальных сообщений — сразу добавляем кнопки
-      bot.editMessageReplyMarkup({
-        inline_keyboard: [[
-          { text: '✅ Отправить всем', callback_data: 'broadcast_' + msg.message_id },
-          { text: '✏️ Редактировать', callback_data: 'edit' }
-        ]]
-      }, {
-        chat_id: ADMIN_GROUP_ID,
-        message_id: msg.message_id
-      }).catch(() => {
-        // Если не получилось отредактировать (например, нет reply_markup) — добавляем через sendMessage
-        bot.sendMessage(ADMIN_GROUP_ID, 'Готово к рассылке:', {
-          reply_to_message_id: msg.message_id,
-          reply_markup: {
-            inline_keyboard: [[
-              { text: '✅ Отправить всем', callback_data: 'broadcast_' + msg.message_id },
-              { text: '✏️ Редактировать', callback_data: 'edit' }
-            ]]
-          }
-        });
+      // --- ПРЕДПРОСМОТР ОДИНОЧНОГО СООБЩЕНИЯ ---
+      const preview = await bot.sendMessage(ADMIN_GROUP_ID, `ПРЕДПРОСМОТР\n${msg.text || msg.caption || ''}`, {
+        message_thread_id: ADMIN_THREAD_ID,
+        reply_markup: {
+          inline_keyboard: [[
+            { text: '📤 Себе', callback_data: 'broadcast_self_' + msg.message_id },
+            { text: '✅ Всем', callback_data: 'broadcast_' + msg.message_id },
+            { text: '😡 Недовольным', callback_data: 'broadcast_bad_' + msg.message_id },
+            { text: '✏️ Редактировать', callback_data: 'edit' }
+          ]]
+        },
+        parse_mode: 'HTML',
+        disable_web_page_preview: true
       });
     }
   }
 
 // --- Обработка inline-кнопок ---
 if (!global._alreadyBroadcasted) global._alreadyBroadcasted = {};
+// MVP: список "недовольных" клиентов в памяти
+// badReviewUsers теперь всегда из users.json
+if (!global._badReviewUsers) global._badReviewUsers = [];
+
 bot.on('callback_query', async (query) => {
   const { message, data } = query;
   if (!message || !data) return;
   const TEST_USER_IDS = [411100616];
+
+  // --- ОТПРАВИТЬ СЕБЕ: Альбом ---
+  if (data.startsWith('broadcast_self_media_')) {
+    const media_group_id = data.replace('broadcast_self_media_', '');
+    const group = Object.values(global._mediaGroups || {}).flat().filter(m => m.media_group_id == media_group_id);
+    if (group && group.length) {
+      const media = group.map(m => {
+        if (m.photo && m.photo.length) {
+          return {
+            type: 'photo',
+            media: m.photo[m.photo.length - 1].file_id,
+            caption: m.caption || m.text || undefined,
+            parse_mode: 'HTML'
+          };
+        } else if (m.video) {
+          return {
+            type: 'video',
+            media: m.video.file_id,
+            caption: m.caption || m.text || undefined,
+            parse_mode: 'HTML'
+          };
+        } else if (m.document) {
+          return {
+            type: 'document',
+            media: m.document.file_id,
+            caption: m.caption || m.text || undefined,
+            parse_mode: 'HTML'
+          };
+        }
+        return null;
+      }).filter(Boolean);
+      // Определяем автора сообщения (reply_to_message.from.id)
+      let authorId = message.reply_to_message?.from?.id;
+      if (!authorId && group[0]?.from?.id) authorId = group[0].from.id;
+      if (!authorId) authorId = TEST_USER_IDS[0]; // fallback
+      await bot.sendMediaGroup(authorId, media);
+    }
+    bot.editMessageReplyMarkup({ inline_keyboard: [[{ text: '✅ Отправлено', callback_data: 'done' }]] }, { chat_id: message.chat.id, message_id: message.message_id });
+    return bot.answerCallbackQuery({ callback_query_id: query.id, text: 'Отправлено автору!' });
+  }
+
+  // --- ОТПРАВИТЬ НЕДОВОЛЬНЫМ: Альбом ---
+  if (data.startsWith('broadcast_bad_media_')) {
+    const media_group_id = data.replace('broadcast_bad_media_', '');
+    const group = Object.values(global._mediaGroups || {}).flat().filter(m => m.media_group_id == media_group_id);
+    if (group && group.length) {
+      const media = group.map(m => {
+        if (m.photo && m.photo.length) {
+          return {
+            type: 'photo',
+            media: m.photo[m.photo.length - 1].file_id,
+            caption: m.caption || m.text || undefined,
+            parse_mode: 'HTML'
+          };
+        } else if (m.video) {
+          return {
+            type: 'video',
+            media: m.video.file_id,
+            caption: m.caption || m.text || undefined,
+            parse_mode: 'HTML'
+          };
+        } else if (m.document) {
+          return {
+            type: 'document',
+            media: m.document.file_id,
+            caption: m.caption || m.text || undefined,
+            parse_mode: 'HTML'
+          };
+        }
+        return null;
+      }).filter(Boolean);
+      for (const userId of global._badReviewUsers) {
+        await bot.sendMediaGroup(userId, media);
+      }
+    }
+    bot.editMessageReplyMarkup({ inline_keyboard: [[{ text: '✅ Отправлено', callback_data: 'done' }]] }, { chat_id: message.chat.id, message_id: message.message_id });
+    return bot.answerCallbackQuery({ callback_query_id: query.id, text: 'Отправлено недовольным!' });
+  }
+
+  // --- ОТПРАВИТЬ СЕБЕ: Одиночное сообщение ---
+  if (data.startsWith('broadcast_self_')) {
+    const msg_id = parseInt(data.replace('broadcast_self_', ''));
+    const msg = (global._lastMessages || []).find(m => m.message_id === msg_id);
+    let authorId = msg?.from?.id || message.reply_to_message?.from?.id;
+    if (!authorId) authorId = TEST_USER_IDS[0]; // fallback
+    await bot.sendMessage(authorId, msg.text || msg.caption || '', {
+      parse_mode: 'HTML',
+      disable_web_page_preview: true
+    });
+    bot.editMessageReplyMarkup({ inline_keyboard: [[{ text: '✅ Отправлено', callback_data: 'done' }]] }, { chat_id: message.chat.id, message_id: message.message_id });
+    return bot.answerCallbackQuery({ callback_query_id: query.id, text: 'Отправлено автору!' });
+  }
+
+  // --- ОТПРАВИТЬ НЕДОВОЛЬНЫМ: Одиночное сообщение ---
+  if (data.startsWith('broadcast_bad_')) {
+    const msg_id = parseInt(data.replace('broadcast_bad_', ''));
+    const msg = (global._lastMessages || []).find(m => m.message_id === msg_id);
+    for (const userId of global._badReviewUsers) {
+      await bot.sendMessage(userId, msg.text || msg.caption || '', {
+        parse_mode: 'HTML',
+        disable_web_page_preview: true
+      });
+    }
+    bot.editMessageReplyMarkup({ inline_keyboard: [[{ text: '✅ Отправлено', callback_data: 'done' }]] }, { chat_id: message.chat.id, message_id: message.message_id });
+    return bot.answerCallbackQuery({ callback_query_id: query.id, text: 'Отправлено недовольным!' });
+  }
+
   // --- ОТПРАВИТЬ ВСЕМ: Альбом ---
   if (data.startsWith('broadcast_media_')) {
     const media_group_id = data.replace('broadcast_media_', '');
@@ -143,7 +313,7 @@ bot.on('callback_query', async (query) => {
         }
         return null;
       }).filter(Boolean);
-      for (const userId of TEST_USER_IDS) {
+      for (const userId of (global._allUserIds || [])) {
         await bot.sendMediaGroup(userId, media);
       }
       // После рассылки полностью очищаем память от альбомов
@@ -166,7 +336,7 @@ bot.on('callback_query', async (query) => {
     // Для простоты: ищем в памяти среди последних сообщений
     const msg = (global._lastMessages || []).find(m => m.message_id === msg_id);
     if (!msg) return bot.answerCallbackQuery({ callback_query_id: query.id, text: 'Сообщение не найдено' });
-    for (const userId of TEST_USER_IDS) {
+    for (const userId of (global._allUserIds || [])) {
       if (msg.photo && msg.photo.length) {
         const photo = msg.photo[msg.photo.length - 1].file_id;
         await bot.sendPhoto(userId, photo, { caption: msg.caption || msg.text || '', parse_mode: 'HTML' });
