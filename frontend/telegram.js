@@ -19,7 +19,6 @@ function getTelegramUser() {
   };
 }
 
-// Экспорт для import
-export { getTelegramUser };
+
 // Глобально для window (index.html)
 window.getTelegramUser = getTelegramUser;
