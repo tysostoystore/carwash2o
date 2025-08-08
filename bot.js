@@ -261,16 +261,57 @@ bot.on('callback_query', async (query) => {
 
   // --- ОТПРАВИТЬ НЕДОВОЛЬНЫМ: Одиночное сообщение ---
   if (data.startsWith('broadcast_bad_')) {
-    const msg_id = parseInt(data.replace('broadcast_bad_', ''));
-    const msg = (global._lastMessages || []).find(m => m.message_id === msg_id);
-    for (const userId of global._badReviewUsers) {
-      await bot.sendMessage(userId, msg.text || msg.caption || '', {
-        parse_mode: 'HTML',
-        disable_web_page_preview: true
+    try {
+      const msg_id = parseInt(data.replace('broadcast_bad_', ''));
+      const msg = (global._lastMessages || []).find(m => m.message_id === msg_id);
+      
+      if (!msg) {
+        console.error('Сообщение не найдено в кеше:', msg_id);
+        return bot.answerCallbackQuery(query.id, { text: '❌ Ошибка: сообщение устарело' });
+      }
+      
+      const badUsers = Array.isArray(global._badReviewUsers) ? global._badReviewUsers : [];
+      if (badUsers.length === 0) {
+        console.log('Нет пользователей для рассылки (badReviewUsers пуст)');
+        return bot.answerCallbackQuery(query.id, { text: '❌ Нет пользователей для рассылки' });
+      }
+      
+      console.log(`Начинаю рассылку ${badUsers.length} пользователям...`);
+      
+      // Обновляем интерфейс перед началом рассылки
+      await bot.answerCallbackQuery(query.id, { text: '🔄 Рассылаем...' });
+      
+      // Отправляем сообщения с задержкой, чтобы не превысить лимиты Telegram
+      for (const userId of badUsers) {
+        try {
+          await bot.sendMessage(userId, msg.text || msg.caption || '', {
+            parse_mode: 'HTML',
+            disable_web_page_preview: true
+          });
+          console.log(`Отправлено пользователю ${userId}`);
+          // Небольшая задержка между сообщениями
+          await new Promise(resolve => setTimeout(resolve, 100));
+        } catch (error) {
+          console.error(`Ошибка отправки пользователю ${userId}:`, error.message);
+          // Продолжаем рассылку при ошибке
+        }
+      }
+      
+      // Обновляем кнопку после завершения
+      await bot.editMessageReplyMarkup(
+        { inline_keyboard: [[{ text: '✅ Отправлено', callback_data: 'sent' }]] }, 
+        { chat_id: message.chat.id, message_id: message.message_id }
+      );
+      
+      console.log('Рассылка завершена');
+      return bot.answerCallbackQuery(query.id, { text: `✅ Отправлено ${badUsers.length} пользователям` });
+      
+    } catch (error) {
+      console.error('Ошибка в broadcast_bad_:', error);
+      return bot.answerCallbackQuery(query.id, { 
+        text: `❌ Ошибка: ${error.message || 'неизвестная ошибка'}` 
       });
     }
-    bot.editMessageReplyMarkup({ inline_keyboard: [[{ text: '✅ Отправить', callback_data: 'send' }]] }, { chat_id: message.chat.id, message_id: message.message_id });
-    return bot.answerCallbackQuery(query.id, { text: 'Отправлено недовольным!' });
   }
 
   // --- ОТПРАВИТЬ ВСЕМ: Альбом ---
@@ -321,38 +362,136 @@ bot.on('callback_query', async (query) => {
     return bot.answerCallbackQuery(query.id, { text: 'Рассылка отправлена!' });
   }
   // --- ОТПРАВИТЬ ВСЕМ: Одиночное сообщение ---
-  if (data.startsWith('broadcast_')) {
-    const msg_id = parseInt(data.replace('broadcast_', ''));
-    if (global._alreadyBroadcasted['msg_' + msg_id]) {
-      return bot.answerCallbackQuery(query.id, { text: 'Уже отправлено!' });
-    }
-    global._alreadyBroadcasted['msg_' + msg_id] = true;
-    // Получаем оригинальное сообщение через getChatMessageHistory (или из памяти, если нужно)
-    // Для простоты: ищем в памяти среди последних сообщений
-    const msg = (global._lastMessages || []).find(m => m.message_id === msg_id);
-    if (!msg) return bot.answerCallbackQuery(query.id, { text: 'Сообщение не найдено' });
-    for (const userId of (global._allUserIds || [])) {
-      if (msg.photo && msg.photo.length) {
-        const photo = msg.photo[msg.photo.length - 1].file_id;
-        await bot.sendPhoto(userId, photo, { caption: msg.caption || msg.text || '', parse_mode: 'HTML' });
-      } else if (msg.document) {
-        await bot.sendDocument(userId, msg.document.file_id, { caption: msg.caption || msg.text || '', parse_mode: 'HTML' });
-      } else if (msg.video) {
-        await bot.sendVideo(userId, msg.video.file_id, { caption: msg.caption || msg.text || '', parse_mode: 'HTML' });
-      } else if (msg.audio) {
-        await bot.sendAudio(userId, msg.audio.file_id, { caption: msg.caption || msg.text || '', parse_mode: 'HTML' });
-      } else if (msg.voice) {
-        await bot.sendVoice(userId, msg.voice.file_id);
-      } else if (msg.sticker) {
-        await bot.sendSticker(userId, msg.sticker.file_id);
-      } else if (msg.poll) {
-        await bot.sendPoll(userId, msg.poll.question, msg.poll.options.map(o=>o.text), { is_anonymous: msg.poll.is_anonymous, allows_multiple_answers: msg.poll.allows_multiple_answers });
-      } else if (msg.text) {
-        await bot.sendMessage(userId, msg.text);
+  if (data.startsWith('broadcast_') && !data.startsWith('broadcast_media_') && !data.startsWith('broadcast_self_')) {
+    try {
+      const msg_id = parseInt(data.replace('broadcast_', ''));
+      
+      // Проверяем, не отправляли ли уже это сообщение
+      if (global._alreadyBroadcasted && global._alreadyBroadcasted['msg_' + msg_id]) {
+        return bot.answerCallbackQuery(query.id, { text: '❌ Уже отправлено!' });
       }
+      if (!global._alreadyBroadcasted) global._alreadyBroadcasted = {};
+      global._alreadyBroadcasted['msg_' + msg_id] = true;
+      
+      // Ищем сообщение в кеше
+      const msg = (global._lastMessages || []).find(m => m.message_id === msg_id);
+      if (!msg) {
+        console.error('Сообщение не найдено в кеше:', msg_id);
+        return bot.answerCallbackQuery(query.id, { text: '❌ Ошибка: сообщение устарело' });
+      }
+      
+      const allUsers = Array.isArray(global._allUserIds) ? global._allUserIds : [];
+      if (allUsers.length === 0) {
+        console.log('Нет пользователей для рассылки (allUserIds пуст)');
+        return bot.answerCallbackQuery(query.id, { text: '❌ Нет пользователей для рассылки' });
+      }
+      
+      console.log(`Начинаю рассылку ${allUsers.length} пользователям...`);
+      
+      // Обновляем интерфейс перед началом рассылки
+      await bot.answerCallbackQuery(query.id, { text: '🔄 Рассылаем...' });
+      
+      // Сначала отправляем себе копию
+      try {
+        await bot.sendMessage(message.chat.id, '📤 КОПИЯ РАССЫЛКИ ВСЕМ:\n\n' + (msg.text || msg.caption || ''), {
+          parse_mode: 'HTML',
+          disable_web_page_preview: true
+        });
+      } catch (e) {
+        console.error('Ошибка отправки копии:', e.message);
+      }
+      
+      // Рассылка всем пользователям с задержкой
+      let successCount = 0;
+      const errors = [];
+      
+      for (const userId of allUsers) {
+        try {
+          // Отправка в зависимости от типа контента
+          if (msg.photo && msg.photo.length) {
+            const photo = msg.photo[msg.photo.length - 1].file_id;
+            await bot.sendPhoto(userId, photo, { 
+              caption: msg.caption || msg.text || '', 
+              parse_mode: 'HTML' 
+            });
+          } else if (msg.document) {
+            await bot.sendDocument(userId, msg.document.file_id, { 
+              caption: msg.caption || msg.text || '', 
+              parse_mode: 'HTML' 
+            });
+          } else if (msg.video) {
+            await bot.sendVideo(userId, msg.video.file_id, { 
+              caption: msg.caption || msg.text || '', 
+              parse_mode: 'HTML' 
+            });
+          } else if (msg.audio) {
+            await bot.sendAudio(userId, msg.audio.file_id, { 
+              caption: msg.caption || msg.text || '', 
+              parse_mode: 'HTML' 
+            });
+          } else if (msg.voice) {
+            await bot.sendVoice(userId, msg.voice.file_id);
+          } else if (msg.sticker) {
+            await bot.sendSticker(userId, msg.sticker.file_id);
+          } else if (msg.poll) {
+            await bot.sendPoll(
+              userId, 
+              msg.poll.question, 
+              msg.poll.options.map(o => o.text), 
+              { 
+                is_anonymous: msg.poll.is_anonymous, 
+                allows_multiple_answers: msg.poll.allows_multiple_answers 
+              }
+            );
+          } else if (msg.text) {
+            await bot.sendMessage(userId, msg.text, { parse_mode: 'HTML' });
+          }
+          
+          successCount++;
+          console.log(`Отправлено пользователю ${userId} (${successCount}/${allUsers.length})`);
+          
+          // Задержка между сообщениями (100мс)
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+        } catch (error) {
+          console.error(`Ошибка отправки пользователю ${userId}:`, error.message);
+          errors.push(`${userId}: ${error.message}`);
+          // Продолжаем при ошибке
+        }
+      }
+      
+      // Формируем статистику
+      const stats = `✅ Успешно: ${successCount}\n❌ Ошибок: ${errors.length}`;
+      
+      // Обновляем кнопку после завершения
+      await bot.editMessageReplyMarkup(
+        { inline_keyboard: [[{ text: `✅ Отправлено ${successCount}/${allUsers.length}`, callback_data: 'sent' }]] }, 
+        { chat_id: message.chat.id, message_id: message.message_id }
+      );
+      
+      console.log(`Рассылка завершена. ${stats}`);
+      
+      // Отправляем статистику
+      if (errors.length > 0) {
+        await bot.sendMessage(
+          message.chat.id, 
+          `📊 Статистика рассылки:\n${stats}\n\n` +
+          `Последние ошибки (${Math.min(3, errors.length)} из ${errors.length}):\n` +
+          errors.slice(0, 3).join('\n'),
+          { parse_mode: 'HTML' }
+        );
+      }
+      
+      return bot.answerCallbackQuery(query.id, { 
+        text: `✅ Отправлено ${successCount} из ${allUsers.length} пользователям` 
+      });
+      
+    } catch (error) {
+      console.error('Ошибка в broadcast_:', error);
+      return bot.answerCallbackQuery(query.id, { 
+        text: `❌ Ошибка: ${error.message || 'неизвестная ошибка'}` 
+      });
     }
-    bot.editMessageReplyMarkup({ inline_keyboard: [[{ text: '✅ Отправить', callback_data: 'send' }]] }, { chat_id: message.chat.id, message_id: message.message_id });
-    return bot.answerCallbackQuery(query.id, { text: 'Рассылка отправлена!' });
   }
   // --- Редактировать ---
   if (data === 'edit') {

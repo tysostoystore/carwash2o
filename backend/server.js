@@ -236,10 +236,23 @@ app.post('/reviews', (req, res) => {
       if (tg_user_id && Number.isInteger(Number(tg_user_id))) {
         const uid = Number(tg_user_id);
         if (rating < 5) {
-          if (!botGlobals._badReviewUsers.includes(uid)) botGlobals._badReviewUsers.push(uid);
+          if (!botGlobals._badReviewUsers.includes(uid)) {
+            botGlobals._badReviewUsers.push(uid);
+            console.log(`[REVIEW] User ${uid} added to badReviewUsers (rating: ${rating})`);
+          }
         } else {
           // Если 5★ — удалить из badReviewUsers
+          const prevLength = botGlobals._badReviewUsers.length;
           botGlobals._badReviewUsers = botGlobals._badReviewUsers.filter(id => id !== uid);
+          if (botGlobals._badReviewUsers.length < prevLength) {
+            console.log(`[REVIEW] User ${uid} removed from badReviewUsers (rating: ${rating})`);
+          }
+        }
+        
+        // Обновляем allUserIds
+        if (!botGlobals._allUserIds.includes(uid)) {
+          botGlobals._allUserIds.push(uid);
+          console.log(`[REVIEW] New user ${uid} added to allUserIds`);
         }
         // --- Сохраняем badReviewUsers и allUserIds в users.json ---
         try {
