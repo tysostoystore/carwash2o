@@ -224,7 +224,7 @@ async function renderBookingForm() {
       }
       const fd = new FormData(e.target);
       // Добавляем Telegram user info, если доступно
-      const tgUser = getTelegramUser();
+      const tgUser = window.getTelegramUser ? window.getTelegramUser() : {};
       const body = {
         name: fd.get('name'),
         phone: fd.get('phone'),
@@ -248,6 +248,7 @@ async function renderBookingForm() {
         });
         const data = await res.json();
         if (data.success) {
+          showOrderSuccessModal();
           msg.textContent = 'Заявка успешно отправлена!';
           msg.className = 'text-green-400 text-center mt-2';
           e.target.reset();
@@ -327,6 +328,40 @@ function renderMainScreen() {
       }
     };
   }
+}
+
+// --- Модалка "Спасибо за заявку" ---
+function showOrderSuccessModal() {
+  // Проверяем, есть ли уже модалка
+  let modal = document.getElementById('order-success-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'order-success-modal';
+    modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm';
+    modal.innerHTML = `
+      <div class="bg-[#23272f] rounded-2xl shadow-xl p-7 w-full max-w-xs flex flex-col gap-4 relative animate-fade-in border border-[#f97316]/30">
+        <button id="close-order-success-modal" class="absolute top-3 right-3 text-gray-400 hover:text-white text-2xl leading-none">&times;</button>
+        <div class="text-xl font-bold text-white mb-2 text-center">Спасибо за заявку!</div>
+        <div class="text-gray-300 text-center mb-2">Наш оператор свяжется с вами для подтверждения бронирования.</div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  } else {
+    modal.classList.remove('hidden');
+  }
+  // Кнопка закрытия
+  document.getElementById('close-order-success-modal').onclick = () => {
+    modal.classList.add('hidden');
+    // Вернуть пользователя на главный экран
+    renderMainScreen();
+  };
+  // Клик вне окна — тоже закрыть
+  modal.onclick = (e) => {
+    if (e.target === modal) {
+      modal.classList.add('hidden');
+      renderMainScreen();
+    }
+  };
 }
 
 // Показываем главный экран при загрузке
