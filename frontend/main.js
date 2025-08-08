@@ -16,7 +16,7 @@ try {
   BACKEND_URL = window.BACKEND_URL || "https://carwash2o.fly.dev";
   WEBAPP_URL = window.WEBAPP_URL || "https://carwash2o.fly.dev/";
 }
-import { getTelegramUser } from './telegram.js';
+// getTelegramUser теперь глобально через window.getTelegramUser
 const api = (path, opts = {}) => fetch(BACKEND_URL + path, opts).then(r => r.json());
 
 async function renderBookingForm() {
