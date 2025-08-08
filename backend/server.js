@@ -241,6 +241,18 @@ app.post('/reviews', (req, res) => {
           // Если 5★ — удалить из badReviewUsers
           botGlobals._badReviewUsers = botGlobals._badReviewUsers.filter(id => id !== uid);
         }
+        // --- Сохраняем badReviewUsers и allUserIds в users.json ---
+        try {
+          const usersPath = path.join(__dirname, 'data/users.json');
+          let usersObj = { allUserIds: [], badReviewUsers: [] };
+          if (fs.existsSync(usersPath)) {
+            usersObj = JSON.parse(fs.readFileSync(usersPath, 'utf8'));
+          }
+          usersObj.badReviewUsers = botGlobals._badReviewUsers;
+          // Добавляем user_id в allUserIds, если его там нет
+          if (uid && !usersObj.allUserIds.includes(uid)) usersObj.allUserIds.push(uid);
+          fs.writeFileSync(usersPath, JSON.stringify(usersObj, null, 2));
+        } catch(e) { console.error('Не удалось сохранить badReviewUsers/allUserIds в users.json:', e); }
       }
     } catch(e) { console.error('badReviewUsers update error:', e); }
     if (err) {

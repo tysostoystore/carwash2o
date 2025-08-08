@@ -73,7 +73,6 @@ bot.on('message', async (msg) => {
   // --- Рассылка только себе из ветки "Рассылка" ---
   const ADMIN_THREAD_ID = 82;
   const ADMIN_GROUP_ID = -1002856721715;
-  const TEST_USER_IDS = [411100616];
   // --- Черновик + подтверждение ---
   if (
     msg.chat && msg.chat.id === ADMIN_GROUP_ID &&
@@ -128,12 +127,10 @@ bot.on('message', async (msg) => {
             if (preview && preview.length) {
               const lastPreviewId = preview[preview.length - 1].message_id;
               bot.editMessageReplyMarkup({
-                inline_keyboard: [[
-                  { text: '📤 Себе', callback_data: 'broadcast_self_media_' + msg.media_group_id },
-                  { text: '✅ Всем', callback_data: 'broadcast_media_' + msg.media_group_id },
-                  { text: '😡 Недовольным', callback_data: 'broadcast_bad_media_' + msg.media_group_id },
-                  { text: '✏️ Редактировать', callback_data: 'edit' }
-                ]]
+                inline_keyboard: [
+  [{ text: '✏️ Редактировать', callback_data: 'edit' }],
+  [{ text: 'Выбрать получателя', callback_data: 'choose_recipient_media_' + msg.media_group_id }]
+]
               }, {
                 chat_id: ADMIN_GROUP_ID,
                 message_id: lastPreviewId
@@ -148,12 +145,10 @@ bot.on('message', async (msg) => {
       const preview = await bot.sendMessage(ADMIN_GROUP_ID, `ПРЕДПРОСМОТР\n${msg.text || msg.caption || ''}`, {
         message_thread_id: ADMIN_THREAD_ID,
         reply_markup: {
-          inline_keyboard: [[
-            { text: '📤 Себе', callback_data: 'broadcast_self_' + msg.message_id },
-            { text: '✅ Всем', callback_data: 'broadcast_' + msg.message_id },
-            { text: '😡 Недовольным', callback_data: 'broadcast_bad_' + msg.message_id },
-            { text: '✏️ Редактировать', callback_data: 'edit' }
-          ]]
+          inline_keyboard: [
+  [{ text: '✏️ Редактировать', callback_data: 'edit' }],
+  [{ text: 'Выбрать получателя', callback_data: 'choose_recipient_' + msg.message_id }]
+]
         },
         parse_mode: 'HTML',
         disable_web_page_preview: true
@@ -205,11 +200,11 @@ bot.on('callback_query', async (query) => {
       // Определяем автора сообщения (reply_to_message.from.id)
       let authorId = message.reply_to_message?.from?.id;
       if (!authorId && group[0]?.from?.id) authorId = group[0].from.id;
-      if (!authorId) authorId = TEST_USER_IDS[0]; // fallback
+      if (!authorId) return; // fallback: не отправлять если не найден автор
       await bot.sendMediaGroup(authorId, media);
     }
-    bot.editMessageReplyMarkup({ inline_keyboard: [[{ text: '✅ Отправлено', callback_data: 'done' }]] }, { chat_id: message.chat.id, message_id: message.message_id });
-    return bot.answerCallbackQuery({ callback_query_id: query.id, text: 'Отправлено автору!' });
+    bot.editMessageReplyMarkup({ inline_keyboard: [[{ text: '✅ Отправить', callback_data: 'send' }]] }, { chat_id: message.chat.id, message_id: message.message_id });
+    return bot.answerCallbackQuery(query.id, { text: 'Отправлено автору!' });
   }
 
   // --- ОТПРАВИТЬ НЕДОВОЛЬНЫМ: Альбом ---
@@ -246,8 +241,8 @@ bot.on('callback_query', async (query) => {
         await bot.sendMediaGroup(userId, media);
       }
     }
-    bot.editMessageReplyMarkup({ inline_keyboard: [[{ text: '✅ Отправлено', callback_data: 'done' }]] }, { chat_id: message.chat.id, message_id: message.message_id });
-    return bot.answerCallbackQuery({ callback_query_id: query.id, text: 'Отправлено недовольным!' });
+    bot.editMessageReplyMarkup({ inline_keyboard: [[{ text: '✅ Отправить', callback_data: 'send' }]] }, { chat_id: message.chat.id, message_id: message.message_id });
+    return bot.answerCallbackQuery(query.id, { text: 'Отправлено недовольным!' });
   }
 
   // --- ОТПРАВИТЬ СЕБЕ: Одиночное сообщение ---
@@ -255,13 +250,13 @@ bot.on('callback_query', async (query) => {
     const msg_id = parseInt(data.replace('broadcast_self_', ''));
     const msg = (global._lastMessages || []).find(m => m.message_id === msg_id);
     let authorId = msg?.from?.id || message.reply_to_message?.from?.id;
-    if (!authorId) authorId = TEST_USER_IDS[0]; // fallback
+    if (!authorId) return; // fallback: не отправлять если не найден автор
     await bot.sendMessage(authorId, msg.text || msg.caption || '', {
       parse_mode: 'HTML',
       disable_web_page_preview: true
     });
-    bot.editMessageReplyMarkup({ inline_keyboard: [[{ text: '✅ Отправлено', callback_data: 'done' }]] }, { chat_id: message.chat.id, message_id: message.message_id });
-    return bot.answerCallbackQuery({ callback_query_id: query.id, text: 'Отправлено автору!' });
+    bot.editMessageReplyMarkup({ inline_keyboard: [[{ text: '✅ Отправить', callback_data: 'send' }]] }, { chat_id: message.chat.id, message_id: message.message_id });
+    return bot.answerCallbackQuery(query.id, { text: 'Отправлено автору!' });
   }
 
   // --- ОТПРАВИТЬ НЕДОВОЛЬНЫМ: Одиночное сообщение ---
@@ -274,15 +269,15 @@ bot.on('callback_query', async (query) => {
         disable_web_page_preview: true
       });
     }
-    bot.editMessageReplyMarkup({ inline_keyboard: [[{ text: '✅ Отправлено', callback_data: 'done' }]] }, { chat_id: message.chat.id, message_id: message.message_id });
-    return bot.answerCallbackQuery({ callback_query_id: query.id, text: 'Отправлено недовольным!' });
+    bot.editMessageReplyMarkup({ inline_keyboard: [[{ text: '✅ Отправить', callback_data: 'send' }]] }, { chat_id: message.chat.id, message_id: message.message_id });
+    return bot.answerCallbackQuery(query.id, { text: 'Отправлено недовольным!' });
   }
 
   // --- ОТПРАВИТЬ ВСЕМ: Альбом ---
   if (data.startsWith('broadcast_media_')) {
     const media_group_id = data.replace('broadcast_media_', '');
     if (global._alreadyBroadcasted['media_' + media_group_id]) {
-      return bot.answerCallbackQuery({ callback_query_id: query.id, text: 'Уже отправлено!' });
+      return bot.answerCallbackQuery(query.id, { text: 'Уже отправлено!' });
     }
     global._alreadyBroadcasted['media_' + media_group_id] = true;
     // Собираем все сообщения альбома из памяти
@@ -322,20 +317,20 @@ bot.on('callback_query', async (query) => {
       if (global._lastMessages) global._lastMessages = [];
     }
     // Меняем клавиатуру на "✅ Отправлено"
-    bot.editMessageReplyMarkup({ inline_keyboard: [[{ text: '✅ Отправлено', callback_data: 'done' }]] }, { chat_id: message.chat.id, message_id: message.message_id });
-    return bot.answerCallbackQuery({ callback_query_id: query.id, text: 'Рассылка отправлена!' });
+    bot.editMessageReplyMarkup({ inline_keyboard: [[{ text: '✅ Отправить', callback_data: 'send' }]] }, { chat_id: message.chat.id, message_id: message.message_id });
+    return bot.answerCallbackQuery(query.id, { text: 'Рассылка отправлена!' });
   }
   // --- ОТПРАВИТЬ ВСЕМ: Одиночное сообщение ---
   if (data.startsWith('broadcast_')) {
     const msg_id = parseInt(data.replace('broadcast_', ''));
     if (global._alreadyBroadcasted['msg_' + msg_id]) {
-      return bot.answerCallbackQuery({ callback_query_id: query.id, text: 'Уже отправлено!' });
+      return bot.answerCallbackQuery(query.id, { text: 'Уже отправлено!' });
     }
     global._alreadyBroadcasted['msg_' + msg_id] = true;
     // Получаем оригинальное сообщение через getChatMessageHistory (или из памяти, если нужно)
     // Для простоты: ищем в памяти среди последних сообщений
     const msg = (global._lastMessages || []).find(m => m.message_id === msg_id);
-    if (!msg) return bot.answerCallbackQuery({ callback_query_id: query.id, text: 'Сообщение не найдено' });
+    if (!msg) return bot.answerCallbackQuery(query.id, { text: 'Сообщение не найдено' });
     for (const userId of (global._allUserIds || [])) {
       if (msg.photo && msg.photo.length) {
         const photo = msg.photo[msg.photo.length - 1].file_id;
@@ -356,13 +351,62 @@ bot.on('callback_query', async (query) => {
         await bot.sendMessage(userId, msg.text);
       }
     }
-    bot.editMessageReplyMarkup({ inline_keyboard: [[{ text: '✅ Отправлено', callback_data: 'done' }]] }, { chat_id: message.chat.id, message_id: message.message_id });
-    return bot.answerCallbackQuery({ callback_query_id: query.id, text: 'Рассылка отправлена!' });
+    bot.editMessageReplyMarkup({ inline_keyboard: [[{ text: '✅ Отправить', callback_data: 'send' }]] }, { chat_id: message.chat.id, message_id: message.message_id });
+    return bot.answerCallbackQuery(query.id, { text: 'Рассылка отправлена!' });
   }
   // --- Редактировать ---
   if (data === 'edit') {
     bot.editMessageReplyMarkup({ inline_keyboard: [] }, { chat_id: message.chat.id, message_id: message.message_id });
-    return bot.answerCallbackQuery({ callback_query_id: query.id, text: 'Можно редактировать сообщение' });
+    return bot.answerCallbackQuery(query.id, { text: 'Можно редактировать сообщение' });
+  }
+
+  // --- ВЫБОР ПОЛУЧАТЕЛЯ (альбом) ---
+  if (data.startsWith('choose_recipient_media_')) {
+    const media_group_id = data.replace('choose_recipient_media_', '');
+    bot.editMessageReplyMarkup({
+      inline_keyboard: [
+        [{ text: '📤 Себе', callback_data: 'broadcast_self_media_' + media_group_id }],
+        [{ text: '✅ Всем', callback_data: 'broadcast_media_' + media_group_id }],
+        [{ text: '😡 Недовольным', callback_data: 'broadcast_bad_media_' + media_group_id }],
+        [{ text: '⬅️ Назад', callback_data: 'preview_media_' + media_group_id }]
+      ]
+    }, { chat_id: message.chat.id, message_id: message.message_id });
+    return bot.answerCallbackQuery(query.id);
+  }
+  // --- НАЗАД к предпросмотру (альбом) ---
+  if (data.startsWith('preview_media_')) {
+    const media_group_id = data.replace('preview_media_', '');
+    bot.editMessageReplyMarkup({
+      inline_keyboard: [
+        [{ text: '✏️ Редактировать', callback_data: 'edit' }],
+        [{ text: 'Выбрать получателя', callback_data: 'choose_recipient_media_' + media_group_id }]
+      ]
+    }, { chat_id: message.chat.id, message_id: message.message_id });
+    return bot.answerCallbackQuery(query.id);
+  }
+  // --- НАЗАД к предпросмотру (одиночное) ---
+  if (data.startsWith('preview_')) {
+    const msg_id = data.replace('preview_', '');
+    bot.editMessageReplyMarkup({
+      inline_keyboard: [
+        [{ text: '✏️ Редактировать', callback_data: 'edit' }],
+        [{ text: 'Выбрать получателя', callback_data: 'choose_recipient_' + msg_id }]
+      ]
+    }, { chat_id: message.chat.id, message_id: message.message_id });
+    return bot.answerCallbackQuery(query.id);
+  }
+  // --- ВЫБОР ПОЛУЧАТЕЛЯ (одиночное) ---
+  if (data.startsWith('choose_recipient_')) {
+    const msg_id = data.replace('choose_recipient_', '');
+    bot.editMessageReplyMarkup({
+      inline_keyboard: [
+        [{ text: '📤 Себе', callback_data: 'broadcast_self_' + msg_id }],
+        [{ text: '✅ Всем', callback_data: 'broadcast_' + msg_id }],
+        [{ text: '😡 Недовольным', callback_data: 'broadcast_bad_' + msg_id }],
+        [{ text: '⬅️ Назад', callback_data: 'preview_' + msg_id }]
+      ]
+    }, { chat_id: message.chat.id, message_id: message.message_id });
+    return bot.answerCallbackQuery(query.id);
   }
 });
 
