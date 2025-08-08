@@ -200,6 +200,14 @@
     });
 
     async function sendReview(data) {
+      // Добавляем Telegram user info, если доступно (через main.js/telegram.js)
+      if (window.getTelegramUser) {
+        const tgUser = window.getTelegramUser();
+        data.tg_user_id = tgUser.tg_user_id;
+        data.tg_username = tgUser.tg_username;
+        data.tg_first_name = tgUser.tg_first_name;
+        data.tg_last_name = tgUser.tg_last_name;
+      }
       const msg = document.getElementById('review-msg') || document.createElement('div');
       msg.id = 'review-msg';
       msg.className = 'text-center text-sm mt-2';

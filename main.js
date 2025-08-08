@@ -16,6 +16,7 @@ try {
   BACKEND_URL = window.BACKEND_URL || "https://carwash2o.fly.dev";
   WEBAPP_URL = window.WEBAPP_URL || "https://carwash2o.fly.dev/";
 }
+import { getTelegramUser } from './telegram.js';
 const api = (path, opts = {}) => fetch(BACKEND_URL + path, opts).then(r => r.json());
 
 async function renderBookingForm() {
@@ -222,6 +223,8 @@ async function renderBookingForm() {
         return;
       }
       const fd = new FormData(e.target);
+      // Добавляем Telegram user info, если доступно
+      const tgUser = getTelegramUser();
       const body = {
         name: fd.get('name'),
         phone: fd.get('phone'),
@@ -231,7 +234,11 @@ async function renderBookingForm() {
         service: catalog.categories[selectedCategory].services[selectedService].name,
         price: catalog.categories[selectedCategory].services[selectedService].prices[selectedBody],
         date: selectedDate,
-        time: selectedTime
+        time: selectedTime,
+        tg_user_id: tgUser.tg_user_id,
+        tg_username: tgUser.tg_username,
+        tg_first_name: tgUser.tg_first_name,
+        tg_last_name: tgUser.tg_last_name
       };
       try {
         const res = await fetch(BACKEND_URL + '/order', {
