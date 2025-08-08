@@ -135,6 +135,31 @@ app.get('/services', (req, res) => {
   });
 });
 
+// Health endpoint for Fly.io checks and manual diagnostics
+app.get('/health', (req, res) => {
+  try {
+    const usersFile = path.join(__dirname, 'data', 'users.json');
+    let usersObj = { allUserIds: [], badReviewUsers: [] };
+    try {
+      if (fs.existsSync(usersFile)) {
+        usersObj = JSON.parse(fs.readFileSync(usersFile, 'utf8'));
+      }
+    } catch {}
+    const health = {
+      ok: true,
+      time: new Date().toISOString(),
+      usersFile,
+      allUserIds: Array.isArray(usersObj.allUserIds) ? usersObj.allUserIds.length : 0,
+      badReviewUsers: Array.isArray(usersObj.badReviewUsers) ? usersObj.badReviewUsers.length : 0,
+      env: { port: PORT }
+    };
+    res.json(health);
+  } catch (e) {
+    console.error('/health error:', e);
+    res.status(500).json({ ok: false, error: e.message || String(e) });
+  }
+});
+
 // Получение доступных дат
 app.get('/available-dates', (req, res) => {
   db.all('SELECT DISTINCT date FROM slots WHERE status = "free"', (err, rows) => {
@@ -248,8 +273,13 @@ app.post('/reviews', (req, res) => {
       try { botGlobals = require('../bot'); } catch(e) { botGlobals = global; }
       if (!botGlobals._badReviewUsers) botGlobals._badReviewUsers = [];
       if (!botGlobals._allUserIds) botGlobals._allUserIds = [];
-      if (tg_user_id && Number.isInteger(Number(tg_user_id))) {
-        const uid = Number(tg_user_id);
+      // Надёжное извлечение uid
+      let uidRaw = tg_user_id;
+      if (!uidRaw && req.headers) {
+        uidRaw = req.headers['x-telegram-user-id'] || req.headers['x-telegram-userid'] || req.headers['x-user-id'];
+      }
+      const uid = Number(String(uidRaw || '').trim());
+      if (Number.isFinite(uid) && uid > 0) {
         if (rating < 5) {
           if (!botGlobals._badReviewUsers.includes(uid)) {
             botGlobals._badReviewUsers.push(uid);
@@ -282,6 +312,10 @@ app.post('/reviews', (req, res) => {
           fs.writeFileSync(usersPath, JSON.stringify(usersObj, null, 2));
           console.log('[REVIEWS] users.json saved at', usersPath, '=>', usersObj);
         } catch(e) { console.error('Не удалось сохранить badReviewUsers/allUserIds в users.json:', e); }
+      } else {
+        console.warn('[REVIEWS] Missing or invalid tg_user_id, cannot update segments. Headers uid candidates:', {
+          xTelegramUserId: req.headers && (req.headers['x-telegram-user-id'] || req.headers['x-telegram-userid'] || req.headers['x-user-id'])
+        });
       }
     } catch(e) { console.error('badReviewUsers update error:', e); }
     if (err) {
