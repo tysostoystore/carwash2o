@@ -41,13 +41,13 @@ async function renderBookingForm() {
 
   function render() {
     app.innerHTML = `
-      <button type="button" class="mb-4 text-base text-gray-400 hover:text-white transition flex items-center gap-2 back-btn btn-press" style="align-self:flex-start"><span style="font-size:1.3em">←</span> На главную</button>
-      <form id="booking-form" class="flex flex-col gap-6 animate-fade-in">
+      <button type="button" class="mb-4 text-base text-gray-400 hover:text-white transition flex items-center gap-2 back-btn btn-press animate-slide-up" style="align-self:flex-start"><span style="font-size:1.3em">←</span> На главную</button>
+      <form id="booking-form" class="flex flex-col gap-6 animate-fade-in transition-all">
         <div>
           <div class="mb-2 text-base font-semibold text-gray-200">Тип кузова</div>
           <div class="grid grid-cols-2 gap-2 mb-4">
             ${catalog.bodyTypes.map((type, i) => `
-              <button type="button" class="rounded-xl py-3 px-2 flex flex-col items-center border ${selectedBody===i?'border-[#f97316] bg-[#18181b] text-white':'border-gray-700 bg-gray-900 text-gray-300'} font-semibold text-base focus:outline-none transition-all btn-press" data-body="${i}">
+              <button type="button" class="rounded-xl py-3 px-2 flex flex-col items-center border ${selectedBody===i?'border-[#f97316] bg-[#18181b] text-white':'border-gray-700 bg-gray-900 text-gray-300'} font-semibold text-base focus:outline-none transition-all btn-press animate-pop" data-body="${i}">
                 <span class="text-2xl mb-1">${bodyIcon(i)}</span>
                 ${type}
               </button>
@@ -62,7 +62,7 @@ async function renderBookingForm() {
           </div>
           <div class="flex flex-col gap-2">
             ${catalog.categories[selectedCategory].services.map((srv, i) => `
-              <button type="button" class="flex items-center justify-between w-full rounded-xl px-4 py-3 bg-gray-800 text-left ${selectedService===i?'ring-2 ring-[#f97316]':''} focus:outline-none transition-all group" data-srv="${i}">
+              <button type="button" class="flex items-center justify-between w-full rounded-xl px-4 py-3 bg-gray-800 text-left ${selectedService===i?'ring-2 ring-[#f97316]':''} focus:outline-none transition-all group animate-slide-up" data-srv="${i}">
                 <span class="flex flex-col">
                   <span class="font-semibold text-white">${srv.name}</span>
                   <span class="text-sm text-gray-400">${srv.promo?'<span class=\'inline-block bg-[#f97316] text-xs text-white rounded px-2 py-0.5 mr-2\'>АКЦИЯ</span>':''}${catalog.bodyTypes[selectedBody]} — <span class="font-bold text-[#f97316]">${srv.prices[selectedBody]}₽</span></span>
@@ -92,7 +92,14 @@ async function renderBookingForm() {
       </form>
     `;
     // Назад на главную
-    app.querySelector('.back-btn').onclick = () => renderMainScreen();
+    app.querySelector('.back-btn').onclick = () => {
+  const appEl = document.getElementById('app');
+  appEl.classList.add('animate-fade-out');
+  setTimeout(() => {
+    appEl.classList.remove('animate-fade-out');
+    renderMainScreen();
+  }, 220);
+};
     // Кузова
     app.querySelectorAll('[data-body]').forEach(btn => {
       btn.onclick = e => { selectedBody = +btn.dataset.body; render(); };
@@ -142,11 +149,24 @@ async function renderBookingForm() {
       window.userPhone = e.target.value;
     });
     form.querySelector('[name=phone]').onblur = e => {
-      // Автоочистка, если номер невалиден
+      // Если номер невалиден — подсветить и показать текст
       let val = e.target.value.replace(/\D/g, '');
+      const phoneField = e.target;
+      let msg = form.querySelector('.phone-error-msg');
+      if (!msg) {
+        msg = document.createElement('div');
+        msg.className = 'phone-error-msg text-red-400 text-xs mt-1';
+        phoneField.parentNode.appendChild(msg);
+      }
       if (!(val.length === 11 && (val.startsWith('7') || val.startsWith('8')))) {
-        e.target.value = '';
-        window.userPhone = '';
+        phoneField.classList.add('border-red-500','focus:ring-red-500','animate-pop');
+        msg.textContent = 'Введите корректный номер';
+        msg.classList.add('animate-slide-up');
+        setTimeout(()=>msg.classList.remove('animate-slide-up'),400);
+      } else {
+        phoneField.classList.remove('border-red-500','focus:ring-red-500');
+        msg.textContent = '';
+        msg.classList.remove('animate-slide-up');
       }
     };
     form.querySelector('[name=phone]').oninput = e => { window.userPhone = e.target.value; };
@@ -330,8 +350,8 @@ async function renderBookingForm() {
 function renderMainScreen() {
   const app = document.getElementById('app');
   app.innerHTML = `
-    <div class="min-h-screen flex flex-col justify-between items-center w-full" style="background: linear-gradient(180deg, #23272f 0%, #18181b 100%);">
-      <div class="w-full max-w-md mx-auto flex flex-col gap-8 py-8 px-4">
+    <div class="min-h-screen flex flex-col justify-between items-center w-full animate-fade-in" style="background: linear-gradient(180deg, #23272f 0%, #18181b 100%);">
+      <div class="w-full max-w-md mx-auto flex flex-col gap-8 py-8 px-4 animate-slide-up">
         <div class="flex flex-col items-center gap-2">
           <div class="w-32 h-32 rounded-full bg-[#18181b] flex items-center justify-center mb-2">
             <img src="h2o_logo.png" alt="H2O logo" class="w-28 h-28 object-contain">
@@ -339,7 +359,7 @@ function renderMainScreen() {
           <div class="text-2xl font-extrabold text-white tracking-wide drop-shadow mb-1">H<sub class='text-base align-super text-[#f97316]'>2</sub>O <span class="text-base font-semibold text-gray-300 ml-1">автомойка 24/7</span></div>
           <div class="text-gray-400 text-base font-medium mb-2">Чисто. Быстро. Удобно.</div>
         </div>
-        <button class="w-full py-3 rounded-xl bg-[#f97316] text-white text-lg font-semibold shadow-sm hover:bg-[#fb923c] active:scale-95 transition mb-2 btn-glow" id="main-booking-btn">Записаться на мойку</button>
+        <button class="w-full py-3 rounded-xl bg-[#f97316] text-white text-lg font-semibold shadow-sm hover:bg-[#fb923c] active:scale-95 transition mb-2 btn-glow animate-pop" id="main-booking-btn">Записаться на мойку</button>
         <button id="review-btn" class="w-full py-3 rounded-xl bg-white text-gray-900 text-base font-medium shadow-sm hover:bg-gray-100 active:scale-95 transition mb-2 flex items-center justify-center gap-2">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 17.75l-6.172 3.243 1.179-6.873-5-4.873 6.9-1.002L12 2.25l3.093 6.995 6.9 1.002-5 4.873 1.179 6.873z"/></svg>
           Оставить отзыв
@@ -361,7 +381,14 @@ function renderMainScreen() {
   `;
   // Повторно назначаем обработчик для кнопки записи
   const btn = document.getElementById('main-booking-btn');
-  if (btn) btn.onclick = renderBookingForm;
+  if (btn) btn.onclick = () => {
+    const appEl = document.getElementById('app');
+    appEl.classList.add('animate-fade-out');
+    setTimeout(() => {
+      appEl.classList.remove('animate-fade-out');
+      renderBookingForm();
+    }, 220);
+  };
   
   // Обработчик для кнопки "Оставить отзыв"
   const reviewBtn = document.getElementById('review-btn');
@@ -369,8 +396,9 @@ function renderMainScreen() {
     reviewBtn.onclick = () => {
       const modal = document.getElementById('review-modal');
       if (modal) {
-        modal.classList.remove('modal-leave');
-        modal.classList.remove('hidden');
+        modal.classList.remove('modal-leave','hidden');
+        modal.classList.add('animate-fade-in');
+        setTimeout(()=>modal.classList.remove('animate-fade-in'),400);
       }
     };
   }
@@ -383,9 +411,9 @@ function showOrderSuccessModal() {
   if (!modal) {
     modal = document.createElement('div');
     modal.id = 'order-success-modal';
-    modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm';
+    modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm premium-blur';
     modal.innerHTML = `
-      <div class="bg-[#23272f] rounded-2xl shadow-xl p-7 w-full max-w-xs flex flex-col gap-4 relative animate-fade-in border border-[#f97316]/30">
+      <div class="bg-[#23272f] rounded-2xl shadow-xl p-7 w-full max-w-xs flex flex-col gap-4 relative animate-fade-in border border-[#f97316]/30 modal-premium">
         <button id="close-order-success-modal" class="absolute top-3 right-3 text-gray-400 hover:text-white text-2xl leading-none">&times;</button>
         <div class="text-xl font-bold text-white mb-2 text-center">Спасибо за заявку!</div>
         <div class="text-gray-300 text-center mb-2">Наш оператор свяжется с вами для подтверждения бронирования.</div>
@@ -394,21 +422,37 @@ function showOrderSuccessModal() {
     document.body.appendChild(modal);
   } else {
     modal.classList.remove('hidden');
+modal.classList.add('animate-fade-in');
+setTimeout(()=>modal.classList.remove('animate-fade-in'),400);
   }
   // Кнопка закрытия
   document.getElementById('close-order-success-modal').onclick = () => {
-    modal.classList.add('hidden');
-    // Вернуть пользователя на главный экран
-    renderMainScreen();
+    modal.classList.add('animate-fade-out');
+    setTimeout(()=>{
+      modal.classList.remove('animate-fade-out');
+      modal.classList.add('hidden');
+      renderMainScreen();
+    },220);
   };
   // Клик вне окна — тоже закрыть
   modal.onclick = (e) => {
     if (e.target === modal) {
-      modal.classList.add('hidden');
-      renderMainScreen();
+      modal.classList.add('animate-fade-out');
+      setTimeout(()=>{
+        modal.classList.remove('animate-fade-out');
+        modal.classList.add('hidden');
+        const appEl = document.getElementById('app');
+        appEl.classList.add('animate-fade-in');
+        setTimeout(()=>appEl.classList.remove('animate-fade-in'),400);
+        renderMainScreen();
+      },220);
     }
   };
 }
 
 // Показываем главный экран при загрузке
-window.addEventListener('DOMContentLoaded', renderMainScreen);
+window.addEventListener('DOMContentLoaded', () => {
+  const app = document.getElementById('app');
+  app.classList.add('transition-all');
+  renderMainScreen();
+});
