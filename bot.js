@@ -51,8 +51,11 @@ bot.on('message', async (msg) => {
     msg.message_thread_id === ADMIN_THREAD_ID &&
     !msg.via_bot // чтобы бот не реагировал на свои рассылки
   ) {
-    // Для альбомов — кнопка только на последнем сообщении группы
+    // Для альбомов — сохраняем сообщения в память и кнопка только на последнем сообщении группы
     if (msg.media_group_id) {
+      if (!global._mediaGroups) global._mediaGroups = {};
+      if (!global._mediaGroups[msg.media_group_id]) global._mediaGroups[msg.media_group_id] = [];
+      global._mediaGroups[msg.media_group_id].push(msg);
       if (!global._mediaGroupLast) global._mediaGroupLast = {};
       global._mediaGroupLast[msg.media_group_id] = msg.message_id;
       // setTimeout нужен, чтобы дождаться всех сообщений альбома
