@@ -2,7 +2,7 @@
 // Greets user and shows WebApp button
 const TelegramBot = require('node-telegram-bot-api');
 const fs = require('fs');
-const USERS_PATH = __dirname + '/users.json';
+const USERS_PATH = __dirname + '/backend/data/users.json';
 // Загружаем user_id из файла
 function loadUsers() {
   try {
