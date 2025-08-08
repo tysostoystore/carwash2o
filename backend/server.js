@@ -162,7 +162,7 @@ app.get('/available-times', (req, res) => {
 
 // Создание заказа
 app.post('/order', (req, res) => {
-  const { name, phone, car, bodyType, category, service, price } = req.body;
+  const { name, phone, car, bodyType, category, service, price, tg_user_id, tg_username } = req.body;
   if (!name || !phone || !car || !service) {
     return res.status(400).json({ error: 'Заполните все поля' });
   }
@@ -178,7 +178,12 @@ app.post('/order', (req, res) => {
       }
       // Отправить уведомление в Telegram
       try {
-        const msg = `🆕 <b>Новая заявка</b>\n\n<b>Услуга:</b> ${service}\n<b>Тип кузова:</b> ${bodyType}\n<b>Цена:</b> ${price}₽\n<b>Имя:</b> ${name}\n<b>Телефон:</b> ${phone}\n<b>Авто:</b> ${car}`;
+        let msg = `🆕 <b>Новая заявка</b>\n\n<b>Услуга:</b> ${service}\n<b>Тип кузова:</b> ${bodyType}\n<b>Цена:</b> ${price}₽\n<b>Имя:</b> ${name}\n<b>Телефон:</b> ${phone}\n<b>Авто:</b> ${car}`;
+        if (tg_username) {
+          msg += `\n<b>Telegram:</b> <a href='https://t.me/${tg_username}'>@${tg_username}</a>`;
+        } else if (tg_user_id) {
+          msg += `\n<b>Telegram ID:</b> <code>${tg_user_id}</code>`;
+        }
         bot.sendMessage(TG_CHAT_ID, msg, {
           parse_mode: 'HTML',
           message_thread_id: TG_ORDERS_THREAD_ID
@@ -215,7 +220,7 @@ app.post('/reviews', (req, res) => {
   console.log('Method:', req.method);
   console.log('URL:', req.url);
   console.log('Body:', req.body);
-  const { name, rating, text, photo } = req.body;
+  const { name, rating, text, photo, tg_user_id, tg_username } = req.body;
   if (!name || !rating) {
     console.log('Validation failed:', { name, rating, body: req.body });
     return res.status(400).json({ error: 'Имя и рейтинг обязательны' });
@@ -229,6 +234,11 @@ app.post('/reviews', (req, res) => {
     // Отправить уведомление в Telegram
     const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
     let msg = `⭐️ Новый отзыв (${stars})\n<b>${name}</b>`;
+    if (tg_username) {
+      msg += `\n<b>Telegram:</b> <a href='https://t.me/${tg_username}'>@${tg_username}</a>`;
+    } else if (tg_user_id) {
+      msg += `\n<b>Telegram ID:</b> <code>${tg_user_id}</code>`;
+    }
     if (text) msg += `\n${text}`;
     console.log('Sending Telegram notification...');
     if (photo && photo.startsWith('data:image/')) {
