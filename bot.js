@@ -592,7 +592,7 @@ if (bot) bot.on('callback_query', async (query) => {
 
 // --- Сохраняем последние сообщения для поиска по message_id ---
 if (!global._lastMessages) global._lastMessages = [];
-bot.on('message', (msg) => {
+if (bot) bot.on('message', (msg) => {
   // Сохраняем только последние 30 сообщений
   global._lastMessages.push(msg);
   if (global._lastMessages.length > 30) global._lastMessages.shift();
@@ -601,7 +601,7 @@ bot.on('message', (msg) => {
 // --- Антиспам на приветствие ---
 const lastWelcome = {};
 
-bot.onText(/\/start/, async (msg) => {
+if (bot) bot.onText(/\/start/, async (msg) => {
   const chatId = msg.chat.id;
   const now = Date.now();
   // Не отправлять приветствие чаще, чем раз в минуту на пользователя
@@ -632,7 +632,7 @@ bot.onText(/\/start/, async (msg) => {
 
 // TEMP: Log chat_id and message_thread_id for group topics
 // Отключаем автоответ на каждое сообщение без /start (чтобы не было спама)
-bot.on('message', (msg) => {
+if (bot) bot.on('message', (msg) => {
   console.log('chat_id:', msg.chat?.id, 'thread_id:', msg.message_thread_id, 'text:', msg.text);
   // Можно добавить кастомную логику, если нужно, но автоответ убран для предотвращения спама
 });
