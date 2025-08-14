@@ -85,7 +85,7 @@ async function renderBookingForm() {
           <input name="name" type="text" required class="w-full rounded-lg bg-gray-900/90 text-white border border-gray-700 focus:ring-2 focus:ring-[#f97316] focus:border-[#f97316] outline-none px-4 py-3 placeholder-gray-400 transition-all duration-200" placeholder="Ваше имя" value="${window.userName || ''}">
           <input name="phone" type="tel" required class="w-full rounded-lg bg-gray-900/90 text-white border border-gray-700 focus:ring-2 focus:ring-[#f97316] focus:border-[#f97316] outline-none px-4 py-3 placeholder-gray-400 transition-all duration-200" placeholder="Телефон" value="${window.userPhone || ''}" maxlength="18" autocomplete="tel">
           <input name="car" type="text" required class="w-full rounded-lg bg-gray-900/90 text-white border border-gray-700 focus:ring-2 focus:ring-[#f97316] focus:border-[#f97316] outline-none px-4 py-3 placeholder-gray-400 transition-all duration-200" placeholder="Марка и модель авто" value="${window.userCar || ''}">
-          <input name="plate" type="text" class="w-full rounded-lg bg-gray-900/90 text-white border border-gray-700 focus:ring-2 focus:ring-[#f97316] focus:border-[#f97316] outline-none px-4 py-3 placeholder-gray-400 transition-all duration-200" placeholder="Госномер (например, А123ВС 178)" value="${window.userPlate || ''}">
+          <input name="plate" type="text" required class="w-full rounded-lg bg-gray-900/90 text-white border border-gray-700 focus:ring-2 focus:ring-[#f97316] focus:border-[#f97316] outline-none px-4 py-3 placeholder-gray-400 transition-all duration-200" placeholder="Госномер (например, А123ВС 178)" value="${window.userPlate || ''}">
           <div class="flex flex-col gap-2">
             <div>
               <div class="mb-2 text-base font-semibold text-gray-200">Дата</div>
@@ -195,7 +195,87 @@ async function renderBookingForm() {
     form.querySelector('[name=phone]').oninput = e => { window.userPhone = e.target.value; };
 
     form.querySelector('[name=car]').oninput = e => { window.userCar = e.target.value; };
-    form.querySelector('[name=plate]').oninput = e => { window.userPlate = e.target.value; };
+    // --- Маска и валидация госномера ---
+    const plateInput = form.querySelector('[name=plate]');
+    const latinToCyrMap = {
+      'A':'А','B':'В','C':'С','E':'Е','H':'Н','K':'К','M':'М','O':'О','P':'Р','T':'Т','X':'Х'
+    };
+    const toCyrillic = (s) => s.replace(/[ABCEHKMOPTUX]/g, ch => latinToCyrMap[ch] || ch);
+    const ruLetter = /[АВЕКМНОРСТУХ]/;
+    const cleanPlate = (s) => {
+      // Uppercase, map latin to cyrillic, keep only RU letters, digits (remove user spaces)
+      s = (s || '').toUpperCase();
+      s = toCyrillic(s);
+      return s.replace(/[^АВЕКМНОРСТУХ0-9]/g, '');
+    };
+    const formatPlate = (s) => {
+      const raw = cleanPlate(s);
+      if (!raw) return '';
+      // Decide pattern by first two chars
+      const firstIsL = ruLetter.test(raw[0] || '');
+      const secondIsL = ruLetter.test(raw[1] || '');
+      // Pattern 1: L DDD LL REG
+      if (firstIsL && (!secondIsL || (secondIsL && /\d/.test(raw[2] || '')))) {
+        let i = 0;
+        const L1 = (raw[i] && ruLetter.test(raw[i])) ? raw[i++] : '';
+        let D3 = '';
+        while (i < raw.length && /\d/.test(raw[i]) && D3.length < 3) D3 += raw[i++];
+        let LL = '';
+        while (i < raw.length && ruLetter.test(raw[i]) && LL.length < 2) LL += raw[i++];
+        let REG = '';
+        while (i < raw.length && /\d/.test(raw[i]) && REG.length < 3) REG += raw[i++];
+        let out = L1;
+        if (D3) out += (out?' ':'') + D3;
+        if (LL) out += ' ' + LL;
+        if (REG) out += ' ' + REG;
+        return out;
+      }
+      // Pattern 2: LL DDDD REG
+      let i = 0;
+      let LL = '';
+      while (i < raw.length && ruLetter.test(raw[i]) && LL.length < 2) LL += raw[i++];
+      let D4 = '';
+      while (i < raw.length && /\d/.test(raw[i]) && D4.length < 4) D4 += raw[i++];
+      let REG = '';
+      while (i < raw.length && /\d/.test(raw[i]) && REG.length < 3) REG += raw[i++];
+      let out = LL;
+      if (D4) out += (out?' ':'') + D4;
+      if (REG) out += ' ' + REG;
+      return out;
+    };
+    const plateRegex = /^((([АВЕКМНОРСТУХ] [0-9]{3} [АВЕКМНОРСТУХ]{2})|([АВЕКМНОРСТУХ]{2} [0-9]{4})) [0-9]{2,3})$/;
+    plateInput.addEventListener('input', (e) => {
+      const v = formatPlate(e.target.value);
+      e.target.value = v;
+      window.userPlate = v;
+    });
+    // Disallow manual spaces and sanitize paste
+    plateInput.addEventListener('keydown', (e) => {
+      if (e.key === ' ') e.preventDefault();
+    });
+    plateInput.addEventListener('paste', (e) => {
+      setTimeout(() => {
+        e.target.value = formatPlate(e.target.value);
+        window.userPlate = e.target.value;
+      }, 0);
+    });
+    plateInput.addEventListener('blur', (e) => {
+      const val = (e.target.value || '').trim();
+      // Пустое поле допустимо, но если заполнено — валидируем по маске
+      let msg = form.querySelector('.plate-error-msg');
+      if (!msg) {
+        msg = document.createElement('div');
+        msg.className = 'plate-error-msg text-red-400 text-xs mt-1';
+        plateInput.parentNode.appendChild(msg);
+      }
+      if (val && !plateRegex.test(val)) {
+        plateInput.classList.add('border-red-500','focus:ring-red-500','animate-pop');
+        msg.textContent = 'Формат номера: А 123 ВС 78/178 или АВ 1234 78/178 (только русские буквы)';
+      } else {
+        plateInput.classList.remove('border-red-500','focus:ring-red-500');
+        msg.textContent = '';
+      }
+    });
     // --- КАЛЕНДАРЬ + GRID ВРЕМЕНИ (Flowbite style) ---
     // Состояния — выносим selectedDate/selectedTime во внешний scope, чтобы не сбрасывались между рендерами
     // Всегда вычисляем московскую сегодняшнюю дату
@@ -309,6 +389,15 @@ async function renderBookingForm() {
       if (!(phoneVal.length === 11 && (phoneVal.startsWith('7') || phoneVal.startsWith('8')))) {
         msg.textContent = 'Введите корректный номер: +7 (XXX) XXX-XX-XX или 8 (XXX) XXX-XX-XX';
         msg.className = 'text-red-400 text-center mt-2';
+        return;
+      }
+      // Валидация госномера (обязательно, с регионом)
+      const plateVal = (app.querySelector('input[name="plate"]').value || '').trim();
+      const plateRegex = /^((([АВЕКМНОРСТУХ] [0-9]{3} [АВЕКМНОРСТУХ]{2})|([АВЕКМНОРСТУХ]{2} [0-9]{4})) [0-9]{2,3})$/;
+      if (!plateRegex.test(plateVal)) {
+        msg.textContent = 'Введите корректный госномер: А 123 ВС 78/178 или АВ 1234 78/178 (только русские буквы)';
+        msg.className = 'text-red-400 text-center mt-2';
+        plateInput.classList.add('border-red-500','focus:ring-red-500','animate-pop');
         return;
       }
       const fd = new FormData(e.target);
