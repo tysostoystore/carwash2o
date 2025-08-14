@@ -215,7 +215,7 @@ app.get('/available-times', (req, res) => {
 
 // Создание заказа
 app.post('/order', (req, res) => {
-  const { name, phone, car, plate, bodyType, category, service, price, date, time, tg_user_id, tg_username } = req.body;
+  const { name, phone, car, plate, bodyType, category, service, price, date, time, tg_user_id, tg_username, totalDurationText, totalDurationMinutes } = req.body;
   if (!name || !phone || !car || !service) {
     return res.status(400).json({ error: 'Заполните все поля' });
   }
@@ -231,7 +231,9 @@ app.post('/order', (req, res) => {
       }
       // Отправить уведомление в Telegram
       try {
-        let msg = `🆕 <b>Новая заявка</b>\n\n<b>Услуга:</b> ${service}\n<b>Тип кузова:</b> ${bodyType}\n<b>Цена:</b> ${price}₽\n<b>Дата:</b> ${currentDate}\n<b>Время:</b> ${currentTime}\n<b>Имя:</b> ${name}\n<b>Телефон:</b> ${phone}\n<b>Авто:</b> ${car}${plate ? `\n<b>Госномер:</b> ${plate}` : ''}`;
+        let msg = `🆕 <b>Новая заявка</b>\n\n<b>Услуга:</b> ${service}\n<b>Тип кузова:</b> ${bodyType}\n<b>Цена:</b> ${price}₽` +
+          (totalDurationText ? `\n<b>Общее время:</b> ${totalDurationText}` : '') +
+          `\n<b>Дата:</b> ${currentDate}\n<b>Время:</b> ${currentTime}\n<b>Имя:</b> ${name}\n<b>Телефон:</b> ${phone}\n<b>Авто:</b> ${car}${plate ? `\n<b>Госномер:</b> ${plate}` : ''}`;
         if (tg_username) {
           msg += `\n<b>Telegram:</b> <a href='https://t.me/${tg_username}'>@${tg_username}</a>`;
         } else if (tg_user_id) {
