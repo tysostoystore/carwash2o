@@ -48,8 +48,8 @@ process.on('uncaughtException', (err) => {
 // === Telegram notification config ===
 const TG_TOKEN = process.env.TG_TOKEN || '<YOUR_BOT_TOKEN_HERE>';
 const TG_CHAT_ID = -1002856721715;
-const TG_REVIEWS_THREAD_ID = 26;
-const TG_ORDERS_THREAD_ID = 29;
+const TG_REVIEWS_THREAD_ID = 156;
+const TG_ORDERS_THREAD_ID = 158;
 const bot = new TelegramBot(TG_TOKEN, { polling: false });
 
 app.use(express.json({ limit: '5mb' }));
@@ -108,6 +108,7 @@ const db = new sqlite3.Database('/app/backend/data/carwash.db', (err) => {
       name TEXT NOT NULL,
       phone TEXT NOT NULL,
       car TEXT NOT NULL,
+      plate TEXT,
       status TEXT NOT NULL
     )`, (err) => {
       if (err) {
@@ -115,6 +116,22 @@ const db = new sqlite3.Database('/app/backend/data/carwash.db', (err) => {
       } else {
         console.log('Table orders ensured.');
       }
+    });
+    // Добавим столбец plate, если его нет (миграция на лету)
+    db.all(`PRAGMA table_info(orders)`, (e, rows) => {
+      try {
+        if (e) return console.error('PRAGMA table_info(orders) error:', e);
+        const hasPlate = Array.isArray(rows) && rows.some(r => r.name === 'plate');
+        if (!hasPlate) {
+          db.run(`ALTER TABLE orders ADD COLUMN plate TEXT`, (alterErr) => {
+            if (alterErr) {
+              console.error('ALTER TABLE orders ADD COLUMN plate failed:', alterErr.message || alterErr);
+            } else {
+              console.log('ALTER TABLE orders: column plate added');
+            }
+          });
+        }
+      } catch(ex) { console.error('orders migration error:', ex); }
     });
   }
 });
@@ -198,23 +215,23 @@ app.get('/available-times', (req, res) => {
 
 // Создание заказа
 app.post('/order', (req, res) => {
-  const { name, phone, car, bodyType, category, service, price, tg_user_id, tg_username } = req.body;
+  const { name, phone, car, plate, bodyType, category, service, price, date, time, tg_user_id, tg_username } = req.body;
   if (!name || !phone || !car || !service) {
     return res.status(400).json({ error: 'Заполните все поля' });
   }
-  // Создать заказ
-  const currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-  const currentTime = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  // Дата/время из формы, падение на текущее если не передано
+  const currentDate = date || new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+  const currentTime = time || new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
   
-  db.run('INSERT INTO orders (services, date, time, name, phone, car, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
-    [`${category}: ${service}`, currentDate, currentTime, name, phone, car, 'новый'], function(err) {
+  db.run('INSERT INTO orders (services, date, time, name, phone, car, plate, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    [`${category}: ${service}`, currentDate, currentTime, name, phone, car, plate || null, 'новый'], function(err) {
       if (err) {
         console.error('DB error in /order (insert):', err);
         return res.status(500).json({ error: 'Ошибка сервера (order:insert)' });
       }
       // Отправить уведомление в Telegram
       try {
-        let msg = `🆕 <b>Новая заявка</b>\n\n<b>Услуга:</b> ${service}\n<b>Тип кузова:</b> ${bodyType}\n<b>Цена:</b> ${price}₽\n<b>Имя:</b> ${name}\n<b>Телефон:</b> ${phone}\n<b>Авто:</b> ${car}`;
+        let msg = `🆕 <b>Новая заявка</b>\n\n<b>Услуга:</b> ${service}\n<b>Тип кузова:</b> ${bodyType}\n<b>Цена:</b> ${price}₽\n<b>Дата:</b> ${currentDate}\n<b>Время:</b> ${currentTime}\n<b>Имя:</b> ${name}\n<b>Телефон:</b> ${phone}\n<b>Авто:</b> ${car}${plate ? `\n<b>Госномер:</b> ${plate}` : ''}`;
         if (tg_username) {
           msg += `\n<b>Telegram:</b> <a href='https://t.me/${tg_username}'>@${tg_username}</a>`;
         } else if (tg_user_id) {

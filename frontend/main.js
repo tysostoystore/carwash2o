@@ -62,13 +62,22 @@ async function renderBookingForm() {
           </div>
           <div class="flex flex-col gap-2">
             ${catalog.categories[selectedCategory].services.map((srv, i) => `
-              <button type="button" class="flex items-center justify-between w-full rounded-xl px-4 py-3 bg-gray-800 text-left ${selectedService===i?'ring-2 ring-[#f97316]':''} focus:outline-none transition-all group animate-slide-up" data-srv="${i}">
-                <span class="flex flex-col">
-                  <span class="font-semibold text-white">${srv.name}</span>
-                  <span class="text-sm text-gray-400">${srv.promo?'<span class=\'inline-block bg-[#f97316] text-xs text-white rounded px-2 py-0.5 mr-2\'>АКЦИЯ</span>':''}${catalog.bodyTypes[selectedBody]} — <span class="font-bold text-[#f97316]">${srv.prices[selectedBody]}₽</span></span>
-                </span>
-                <span class="ml-2 text-[#f97316] text-lg">${selectedService===i?'✓':''}</span>
-              </button>
+              <div class="w-full rounded-xl bg-gray-800 overflow-hidden animate-slide-up border border-gray-800 ${selectedService===i?'ring-2 ring-[#f97316]':''}">
+                <button type="button" class="w-full px-4 py-3 text-left flex items-center justify-between focus:outline-none transition-all group" data-srv="${i}">
+                  <span class="flex flex-col">
+                    <span class="font-semibold text-white">${srv.name}</span>
+                    <span class="text-sm text-gray-400">${srv.promo?'<span class=\'inline-block bg-[#f97316] text-xs text-white rounded px-2 py-0.5 mr-2\'>АКЦИЯ</span>':''}${catalog.bodyTypes[selectedBody]} — <span class="font-bold text-[#f97316]">${srv.prices[selectedBody]}₽</span>${srv.durationMinutes?` · <span class=\'text-gray-300\'>~${srv.durationMinutes} мин</span>`:''}</span>
+                  </span>
+                  <span class="ml-2 text-gray-300 text-lg flex items-center gap-2">
+                    <span class="${selectedService===i?'text-[#f97316]':'text-gray-500]'}">${selectedService===i?'✓':''}</span>
+                    ${srv.description?`<svg data-toggle="details" data-idx="${i}" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ${srv._expanded?'rotate-180':''} transition-transform" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.084l3.71-3.853a.75.75 0 111.08 1.04l-4.24 4.4a.75.75 0 01-1.08 0l-4.24-4.4a.75.75 0 01.02-1.06z" clip-rule="evenodd"/></svg>`:''}
+                  </span>
+                </button>
+                ${srv.description?`
+                <div class="px-4 pb-3 ${srv._expanded?'':'hidden'} text-sm text-gray-300 bg-gray-900/50" data-details="${i}">
+                  <div class="whitespace-pre-line">${srv.description}</div>
+                </div>`:''}
+              </div>
             `).join('')}
           </div>
         </div>
@@ -76,6 +85,7 @@ async function renderBookingForm() {
           <input name="name" type="text" required class="w-full rounded-lg bg-gray-900/90 text-white border border-gray-700 focus:ring-2 focus:ring-[#f97316] focus:border-[#f97316] outline-none px-4 py-3 placeholder-gray-400 transition-all duration-200" placeholder="Ваше имя" value="${window.userName || ''}">
           <input name="phone" type="tel" required class="w-full rounded-lg bg-gray-900/90 text-white border border-gray-700 focus:ring-2 focus:ring-[#f97316] focus:border-[#f97316] outline-none px-4 py-3 placeholder-gray-400 transition-all duration-200" placeholder="Телефон" value="${window.userPhone || ''}" maxlength="18" autocomplete="tel">
           <input name="car" type="text" required class="w-full rounded-lg bg-gray-900/90 text-white border border-gray-700 focus:ring-2 focus:ring-[#f97316] focus:border-[#f97316] outline-none px-4 py-3 placeholder-gray-400 transition-all duration-200" placeholder="Марка и модель авто" value="${window.userCar || ''}">
+          <input name="plate" type="text" class="w-full rounded-lg bg-gray-900/90 text-white border border-gray-700 focus:ring-2 focus:ring-[#f97316] focus:border-[#f97316] outline-none px-4 py-3 placeholder-gray-400 transition-all duration-200" placeholder="Госномер (например, А123ВС 178)" value="${window.userPlate || ''}">
           <div class="flex flex-col gap-2">
             <div>
               <div class="mb-2 text-base font-semibold text-gray-200">Дата</div>
@@ -112,10 +122,23 @@ async function renderBookingForm() {
     app.querySelectorAll('[data-srv]').forEach(btn => {
       btn.onclick = e => { selectedService = +btn.dataset.srv; render(); };
     });
+    // Тогглер описания
+    app.querySelectorAll('svg[data-toggle="details"]').forEach(icon => {
+      icon.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        const idx = +icon.getAttribute('data-idx');
+        const srv = catalog.categories[selectedCategory].services[idx];
+        srv._expanded = !srv._expanded;
+        const details = app.querySelector(`[data-details="${idx}"]`);
+        if (details) details.classList.toggle('hidden');
+        icon.classList.toggle('rotate-180');
+      });
+    });
     // --- ПОЛЯ ФОРМЫ: сохраняем значения между рендерами ---
     if (typeof window.userName === 'undefined') window.userName = '';
     if (typeof window.userPhone === 'undefined') window.userPhone = '';
     if (typeof window.userCar === 'undefined') window.userCar = '';
+    if (typeof window.userPlate === 'undefined') window.userPlate = '';
     const form = app.querySelector('#booking-form');
     form.querySelector('[name=name]').oninput = e => { window.userName = e.target.value; };
     // Маска телефона: +7 (___) ___-__-__ или 8 (___) ___-__-__
@@ -172,6 +195,7 @@ async function renderBookingForm() {
     form.querySelector('[name=phone]').oninput = e => { window.userPhone = e.target.value; };
 
     form.querySelector('[name=car]').oninput = e => { window.userCar = e.target.value; };
+    form.querySelector('[name=plate]').oninput = e => { window.userPlate = e.target.value; };
     // --- КАЛЕНДАРЬ + GRID ВРЕМЕНИ (Flowbite style) ---
     // Состояния — выносим selectedDate/selectedTime во внешний scope, чтобы не сбрасывались между рендерами
     // Всегда вычисляем московскую сегодняшнюю дату
@@ -209,12 +233,11 @@ async function renderBookingForm() {
         render();
       };
     });
-    // Время — круглосуточно, шаг 30 мин (00:00–23:30)
+    // Время — круглосуточно, шаг 60 мин (00:00–23:00)
     const timegrid = app.querySelector('#timegrid');
     let times = [];
     for (let h = 0; h < 24; h++) {
       times.push(`${pad(h)}:00`);
-      times.push(`${pad(h)}:30`);
     }
     let showAllTimes = false;
     // Добавляем вертикальный скролл для timegrid
@@ -295,6 +318,7 @@ async function renderBookingForm() {
         name: fd.get('name'),
         phone: fd.get('phone'),
         car: fd.get('car'),
+        plate: fd.get('plate') || '',
         bodyType: catalog.bodyTypes[selectedBody],
         category: catalog.categories[selectedCategory].name,
         service: catalog.categories[selectedCategory].services[selectedService].name,
@@ -364,7 +388,7 @@ function renderMainScreen() {
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 17.75l-6.172 3.243 1.179-6.873-5-4.873 6.9-1.002L12 2.25l3.093 6.995 6.9 1.002-5 4.873 1.179 6.873z"/></svg>
           Оставить отзыв
         </button>
-        <a href="http://t.me/tysostoystore" target="_blank" rel="noopener noreferrer"
+        <a href="https://t.me/+79669399900" target="_blank" rel="noopener noreferrer"
           class="w-full py-3 rounded-xl bg-white text-gray-900 text-base font-medium shadow-sm hover:bg-gray-100 active:scale-95 transition flex items-center justify-center gap-2 no-underline">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/></svg>
           Связаться с оператором
