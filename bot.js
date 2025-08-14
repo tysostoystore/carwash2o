@@ -51,12 +51,12 @@ const { TG_TOKEN, WEBAPP_URL } = require('./config.js');
 
 const TOKEN = TG_TOKEN || 'REPLACE_ME'; // fallback for dev
 
-const bot = new TelegramBot(TOKEN, { polling: true });
+const bot = (module.parent ? null : new TelegramBot(TOKEN, { polling: true }));
 
-console.log('Bot started, polling...');
+if (bot) console.log('Bot started, polling...');
 
 // Логируем ошибки polling
-bot.on('polling_error', (err) => {
+if (bot) bot.on('polling_error', (err) => {
   console.error('Polling error:', err);
 });
 
@@ -76,7 +76,7 @@ process.on('exit', (code) => {
 });
 
 // --- Логируем все входящие сообщения для отладки рассылки ---
-bot.on('message', async (msg) => {
+if (bot) bot.on('message', async (msg) => {
   // --- Сохраняем всех пользователей в память (in-memory) ---
   if (!global._allUserIds) global._allUserIds = [];
   const fromId = msg.from && msg.from.id;
@@ -186,7 +186,7 @@ if (!global._alreadyBroadcasted) global._alreadyBroadcasted = {};
 // badReviewUsers теперь всегда из users.json
 if (!global._badReviewUsers) global._badReviewUsers = [];
 
-bot.on('callback_query', async (query) => {
+if (bot) bot.on('callback_query', async (query) => {
   try {
     const { message, data } = query;
     console.log('[CALLBACK] data:', data, 'chat_id:', message && message.chat && message.chat.id, 'msg_id:', message && message.message_id);
