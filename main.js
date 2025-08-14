@@ -35,11 +35,95 @@ async function renderBookingForm() {
   // --- State ---
   let selectedBody = 0;
   let selectedCategory = 0;
-  let selectedService = 0;
+  let selectedService = 0; // индекс выбранного комплекса (для категории complexes)
+  let selectedSingles = new Set(); // индексы выбранных отдельных услуг
 
   render();
 
   function render() {
+    // Prepare services list with default expansion state
+    const formatDuration = (mins) => {
+      const m = Number(mins);
+      if (!Number.isFinite(m) || m <= 0) return '';
+      if (m < 60) return `${m} мин`;
+      const h = Math.floor(m / 60);
+      const r = m % 60;
+      return r ? `${h} ч ${r} мин` : `${h} ч`;
+    };
+    const currentCategory = catalog.categories[selectedCategory];
+    const isComplexes = currentCategory.id === 'complexes';
+    const isSingle = currentCategory.id === 'single';
+    const services = currentCategory.services;
+    services.forEach((srv, i) => {
+      if (typeof srv._expanded === 'undefined') {
+        srv._expanded = isComplexes ? (i === selectedService) : selectedSingles.has(i);
+      } else {
+        // Синхронизируем разворот с выбором для single
+        if (isSingle) srv._expanded = selectedSingles.has(i);
+      }
+    });
+    // Рассчитываем итоговую цену
+    const computeTotal = () => {
+      if (isComplexes) {
+        const sel = services[selectedService];
+        return sel ? Number(sel.prices[selectedBody]) : 0;
+      } else {
+        let sum = 0;
+        selectedSingles.forEach(idx => {
+          const s = services[idx];
+          if (s) sum += Number(s.prices[selectedBody] || 0);
+        });
+        return sum;
+      }
+    };
+    const totalPrice = computeTotal();
+    // Общая длительность (в минутах) и форматированная строка
+    const totalDurationMinutes = (() => {
+      if (isComplexes) {
+        const sel = services[selectedService];
+        return sel && sel.durationMinutes ? Number(sel.durationMinutes) : 0;
+      } else {
+        let mins = 0;
+        selectedSingles.forEach(idx => {
+          const s = services[idx];
+          if (s && s.durationMinutes) mins += Number(s.durationMinutes);
+        });
+        return mins;
+      }
+    })();
+    const totalDurationText = totalDurationMinutes ? formatDuration(totalDurationMinutes) : '';
+    // Подготовим текстовый список выбранных услуг для summary
+    const selectedListText = (() => {
+      if (isComplexes) {
+        const s = services[selectedService];
+        return s ? s.name : '';
+      }
+      const names = [];
+      selectedSingles.forEach(idx => { const s = services[idx]; if (s) names.push(s.name); });
+      return names.join(', ');
+    })();
+    const canSubmit = isComplexes ? !!services[selectedService] : selectedSingles.size > 0;
+    const servicesHtml = services.map((srv, i) => {
+      const isSelected = isComplexes ? (selectedService === i) : selectedSingles.has(i);
+      return `
+              <div class="w-full rounded-xl bg-gray-800 overflow-hidden animate-slide-up border border-gray-800 ${isSelected?'ring-2 ring-[#f97316]':''}">
+                <button type="button" class="w-full px-4 py-3 text-left flex items-center justify-between focus:outline-none transition-all group" data-srv="${i}" aria-expanded="${srv._expanded ? 'true' : 'false'}">
+                  <span class="flex flex-col">
+                    <span class="font-semibold text-white">${srv.name}</span>
+                    <span class="text-sm text-gray-400">${srv.promo?'<span class=\'inline-block bg-[#f97316] text-xs text-white rounded px-2 py-0.5 mr-2\'>АКЦИЯ</span>':''}${catalog.bodyTypes[selectedBody]} — <span class="font-bold text-[#f97316]">${srv.prices[selectedBody]}₽</span>${srv.durationMinutes?` · <span class=\'text-gray-300\'>~${formatDuration(srv.durationMinutes)}</span>`:''}</span>
+                  </span>
+                  <span class="ml-2 text-gray-300 text-lg flex items-center gap-2">
+                    <span class="${isSelected?'text-[#f97316]':'text-gray-500]'}">${isSelected?'✓':''}</span>
+                    ${srv.description?`<svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="pointer-events-none h-5 w-5 ${srv._expanded?'rotate-180':''} transition-transform" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.084l3.71-3.853a.75.75 0 111.08 1.04l-4.24 4.4a.75.75 0 01-1.08 0l-4.24-4.4a.75.75 0 01.02-1.06z" clip-rule="evenodd"/></svg>`:''}
+                  </span>
+                </button>
+                ${srv.description?`
+                <div class="px-4 pb-3 ${srv._expanded?'':'hidden'} text-sm text-gray-300 bg-gray-900/50" data-details="${i}">
+                  <div class="whitespace-pre-line">${srv.description}</div>
+                </div>`:''}
+              </div>
+            `;
+    }).join('');
     app.innerHTML = `
       <button type="button" class="mb-4 text-base text-gray-400 hover:text-white transition flex items-center gap-2 back-btn btn-press animate-slide-up" style="align-self:flex-start"><span style="font-size:1.3em">←</span> На главную</button>
       <form id="booking-form" class="flex flex-col gap-6 animate-fade-in transition-all">
@@ -61,27 +145,17 @@ async function renderBookingForm() {
             `).join('')}
           </div>
           <div class="flex flex-col gap-2">
-            ${catalog.categories[selectedCategory].services.map((srv, i) => `
-              <div class="w-full rounded-xl bg-gray-800 overflow-hidden animate-slide-up border border-gray-800 ${selectedService===i?'ring-2 ring-[#f97316]':''}">
-                <button type="button" class="w-full px-4 py-3 text-left flex items-center justify-between focus:outline-none transition-all group" data-srv="${i}">
-                  <span class="flex flex-col">
-                    <span class="font-semibold text-white">${srv.name}</span>
-                    <span class="text-sm text-gray-400">${srv.promo?'<span class=\'inline-block bg-[#f97316] text-xs text-white rounded px-2 py-0.5 mr-2\'>АКЦИЯ</span>':''}${catalog.bodyTypes[selectedBody]} — <span class="font-bold text-[#f97316]">${srv.prices[selectedBody]}₽</span>${srv.durationMinutes?` · <span class=\'text-gray-300\'>~${srv.durationMinutes} мин</span>`:''}</span>
-                  </span>
-                  <span class="ml-2 text-gray-300 text-lg flex items-center gap-2">
-                    <span class="${selectedService===i?'text-[#f97316]':'text-gray-500]'}">${selectedService===i?'✓':''}</span>
-                    ${srv.description?`<svg data-toggle="details" data-idx="${i}" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ${srv._expanded?'rotate-180':''} transition-transform" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.084l3.71-3.853a.75.75 0 111.08 1.04l-4.24 4.4a.75.75 0 01-1.08 0l-4.24-4.4a.75.75 0 01.02-1.06z" clip-rule="evenodd"/></svg>`:''}
-                  </span>
-                </button>
-                ${srv.description?`
-                <div class="px-4 pb-3 ${srv._expanded?'':'hidden'} text-sm text-gray-300 bg-gray-900/50" data-details="${i}">
-                  <div class="whitespace-pre-line">${srv.description}</div>
-                </div>`:''}
-              </div>
-            `).join('')}
+            ${servicesHtml}
           </div>
         </div>
         <div class="flex flex-col gap-3 mt-4">
+          <div class="rounded-lg bg-gray-900/70 border border-gray-700 px-4 py-3 text-sm text-gray-200 flex flex-col gap-1">
+            <div class="flex justify-between items-center">
+              <span class="text-gray-400">Итого стоимость</span>
+              <span class="font-bold text-[#f97316] text-base">${totalPrice}₽</span>
+            </div>
+            ${totalDurationText ? `<div class="flex justify-between items-center"><span class="text-gray-400">Итого время</span><span class="font-semibold">${totalDurationText}</span></div>` : ''}
+          </div>
           <input name="name" type="text" required class="w-full rounded-lg bg-gray-900/90 text-white border border-gray-700 focus:ring-2 focus:ring-[#f97316] focus:border-[#f97316] outline-none px-4 py-3 placeholder-gray-400 transition-all duration-200" placeholder="Ваше имя" value="${window.userName || ''}">
           <input name="phone" type="tel" required class="w-full rounded-lg bg-gray-900/90 text-white border border-gray-700 focus:ring-2 focus:ring-[#f97316] focus:border-[#f97316] outline-none px-4 py-3 placeholder-gray-400 transition-all duration-200" placeholder="Телефон" value="${window.userPhone || ''}" maxlength="18" autocomplete="tel">
           <input name="car" type="text" required class="w-full rounded-lg bg-gray-900/90 text-white border border-gray-700 focus:ring-2 focus:ring-[#f97316] focus:border-[#f97316] outline-none px-4 py-3 placeholder-gray-400 transition-all duration-200" placeholder="Марка и модель авто" value="${window.userCar || ''}">
@@ -97,7 +171,7 @@ async function renderBookingForm() {
             </div>
           </div>
         </div>
-        <button type="submit" class="w-full py-3 rounded-lg bg-gradient-to-r from-[#f97316] to-[#fb923c] hover:from-[#fb923c] hover:to-[#f97316] text-white font-bold shadow-lg transition-all duration-200 transform hover:-translate-y-0.5 active:scale-95 focus:outline-none focus:ring-2 focus:ring-[#f97316] text-lg">Записаться на услугу за ${catalog.categories[selectedCategory].services[selectedService].prices[selectedBody]}₽</button>
+        <button type="submit" ${canSubmit?'':'disabled'} class="w-full py-3 rounded-lg bg-gradient-to-r from-[#f97316] to-[#fb923c] hover:from-[#fb923c] hover:to-[#f97316] text-white font-bold shadow-lg transition-all duration-200 transform hover:-translate-y-0.5 active:scale-95 focus:outline-none focus:ring-2 focus:ring-[#f97316] text-lg ${canSubmit?'':'opacity-50 cursor-not-allowed'}">Записаться${isSingle ? (selectedSingles.size?` (${selectedSingles.size})`:'') : ''} за ${totalPrice}₽</button>
         <div id="form-msg" class="text-center text-sm mt-2"></div>
       </form>
     `;
@@ -116,23 +190,54 @@ async function renderBookingForm() {
     });
     // Категории
     app.querySelectorAll('[data-cat]').forEach(btn => {
-      btn.onclick = e => { selectedCategory = +btn.dataset.cat; selectedService = 0; render(); };
+      btn.onclick = e => {
+        selectedCategory = +btn.dataset.cat;
+        const cat = catalog.categories[selectedCategory];
+        if (cat.id === 'complexes') {
+          // Для комплексов — один выбранный, по умолчанию 0
+          // Полный сброс выбора из других вкладок
+          selectedSingles = new Set();
+          selectedService = 0;
+          // Свернуть все кроме выбранного
+          cat.services.forEach((s, i) => s._expanded = (i === selectedService));
+        } else {
+          // Для отдельных услуг — множественный выбор, по умолчанию пусто
+          // Полный сброс выбора комплексов и очистка выбранных услуг
+          selectedService = -1;
+          selectedSingles = new Set();
+          // Синхронизация разворотов с выбором
+          cat.services.forEach((s, i) => s._expanded = selectedSingles.has(i));
+        }
+        render();
+      };
     });
-    // Услуги
+    // Услуги: complexes — одиночный выбор; single — множественный выбор
     app.querySelectorAll('[data-srv]').forEach(btn => {
-      btn.onclick = e => { selectedService = +btn.dataset.srv; render(); };
-    });
-    // Тогглер описания
-    app.querySelectorAll('svg[data-toggle="details"]').forEach(icon => {
-      icon.addEventListener('click', (ev) => {
-        ev.stopPropagation();
-        const idx = +icon.getAttribute('data-idx');
-        const srv = catalog.categories[selectedCategory].services[idx];
-        srv._expanded = !srv._expanded;
-        const details = app.querySelector(`[data-details="${idx}"]`);
-        if (details) details.classList.toggle('hidden');
-        icon.classList.toggle('rotate-180');
-      });
+      btn.onclick = e => {
+        const idx = +btn.dataset.srv;
+        const cat = catalog.categories[selectedCategory];
+        const services = cat.services;
+        if (cat.id === 'complexes') {
+          if (selectedService === idx && services[idx]._expanded) {
+            // Повторный тап — свернуть
+            services[idx]._expanded = false;
+          } else {
+            // Выбор нового — раскрыть только его
+            services.forEach((s, j) => { s._expanded = (j === idx); });
+            selectedService = idx;
+          }
+        } else {
+          // Множественный выбор
+          if (selectedSingles.has(idx)) {
+            selectedSingles.delete(idx);
+            services[idx]._expanded = false;
+          } else {
+            selectedSingles.add(idx);
+            services[idx]._expanded = true;
+          }
+        }
+        render();
+      };
     });
     // --- ПОЛЯ ФОРМЫ: сохраняем значения между рендерами ---
     if (typeof window.userName === 'undefined') window.userName = '';
@@ -384,6 +489,13 @@ async function renderBookingForm() {
         msg.className = 'text-red-400 text-center mt-2';
         return;
       }
+      // Валидация выбора услуг
+      const catSel = catalog.categories[selectedCategory];
+      if (catSel.id === 'single' && (!selectedSingles || selectedSingles.size === 0)) {
+        msg.textContent = 'Пожалуйста, выберите хотя бы одну услугу';
+        msg.className = 'text-red-400 text-center mt-2';
+        return;
+      }
       // Валидация телефона (маска)
       const phoneVal = app.querySelector('input[name="phone"]').value.replace(/\D/g, '');
       if (!(phoneVal.length === 11 && (phoneVal.startsWith('7') || phoneVal.startsWith('8')))) {
@@ -403,15 +515,36 @@ async function renderBookingForm() {
       const fd = new FormData(e.target);
       // Добавляем Telegram user info, если доступно
       const tgUser = window.getTelegramUser ? window.getTelegramUser() : {};
+      // Подготовим данные выбранных услуг
+      const cat = catalog.categories[selectedCategory];
+      let selectedNames = '';
+      let total = 0;
+      if (cat.id === 'complexes') {
+        const s = cat.services[selectedService];
+        selectedNames = s ? `${s.name}${s.durationMinutes ? ` (${formatDuration(s.durationMinutes)})` : ''}` : '';
+        total = s ? Number(s.prices[selectedBody]) : 0;
+      } else {
+        const parts = [];
+        selectedSingles.forEach(idx => {
+          const s = cat.services[idx];
+          if (s) {
+            parts.push(`${s.name}${s.durationMinutes ? ` (${formatDuration(s.durationMinutes)})` : ''}`);
+            total += Number(s.prices[selectedBody] || 0);
+          }
+        });
+        selectedNames = parts.join(', ');
+      }
       const body = {
         name: fd.get('name'),
         phone: fd.get('phone'),
         car: fd.get('car'),
         plate: fd.get('plate') || '',
         bodyType: catalog.bodyTypes[selectedBody],
-        category: catalog.categories[selectedCategory].name,
-        service: catalog.categories[selectedCategory].services[selectedService].name,
-        price: catalog.categories[selectedCategory].services[selectedService].prices[selectedBody],
+        category: cat.name,
+        service: selectedNames,
+        price: total,
+        totalDurationMinutes: totalDurationMinutes,
+        totalDurationText: totalDurationText,
         date: selectedDate,
         time: selectedTime,
         tg_user_id: tgUser.tg_user_id,
