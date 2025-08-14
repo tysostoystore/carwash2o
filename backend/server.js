@@ -251,13 +251,35 @@ app.post('/order', (req, res) => {
               date: new Date().toISOString()
             });
           }).catch(e => {
+            const body = e && e.response && e.response.body ? e.response.body : null;
             console.error('[TG] Order ERROR:', {
               chat_id: TG_CHAT_ID,
               thread_id: TG_ORDERS_THREAD_ID,
               text: msg,
-              error: e && e.response && e.response.body ? e.response.body : (e && e.stack ? e.stack : e),
+              error: body || (e && e.stack ? e.stack : e),
               date: new Date().toISOString()
             });
+            // Fallback: retry without thread if topic not found
+            if (body && body.description && /message thread not found/i.test(body.description)) {
+              console.log('[TG] Order fallback: retrying without thread_id...');
+              bot.sendMessage(TG_CHAT_ID, msg, { parse_mode: 'HTML' })
+                .then(tgRes2 => {
+                  console.log('[TG] Order sent (fallback no thread):', {
+                    chat_id: TG_CHAT_ID,
+                    text: msg,
+                    tg_message_id: tgRes2 && tgRes2.message_id,
+                    date: new Date().toISOString()
+                  });
+                })
+                .catch(e2 => {
+                  console.error('[TG] Order Fallback ERROR:', {
+                    chat_id: TG_CHAT_ID,
+                    text: msg,
+                    error: e2 && e2.response && e2.response.body ? e2.response.body : (e2 && e2.stack ? e2.stack : e2),
+                    date: new Date().toISOString()
+                  });
+                });
+            }
           });
         } catch(e) {
           console.error('[TG] Order send EXCEPTION:', e);
@@ -370,13 +392,34 @@ app.post('/reviews', (req, res) => {
         });
       })
       .catch(e => {
+        const body = e && e.response && e.response.body ? e.response.body : null;
         console.error('[TG] Photo ERROR:', {
           chat_id: TG_CHAT_ID,
           thread_id: TG_REVIEWS_THREAD_ID,
           caption: msg,
-          error: e && e.response && e.response.body ? e.response.body : (e && e.stack ? e.stack : e),
+          error: body || (e && e.stack ? e.stack : e),
           date: new Date().toISOString()
         });
+        if (body && body.description && /message thread not found/i.test(body.description)) {
+          console.log('[TG] Photo fallback: retrying without thread_id...');
+          bot.sendPhoto(TG_CHAT_ID, imgBuffer, { caption: msg, parse_mode: 'HTML' })
+            .then(tgRes2 => {
+              console.log('[TG] Photo sent (fallback no thread):', {
+                chat_id: TG_CHAT_ID,
+                caption: msg,
+                tg_message_id: tgRes2 && tgRes2.message_id,
+                date: new Date().toISOString()
+              });
+            })
+            .catch(e2 => {
+              console.error('[TG] Photo Fallback ERROR:', {
+                chat_id: TG_CHAT_ID,
+                caption: msg,
+                error: e2 && e2.response && e2.response.body ? e2.response.body : (e2 && e2.stack ? e2.stack : e2),
+                date: new Date().toISOString()
+              });
+            });
+        }
       });
     } else {
       bot.sendMessage(TG_CHAT_ID, msg, {
@@ -393,13 +436,34 @@ app.post('/reviews', (req, res) => {
         });
       })
       .catch(e => {
+        const body = e && e.response && e.response.body ? e.response.body : null;
         console.error('[TG] Message ERROR:', {
           chat_id: TG_CHAT_ID,
           thread_id: TG_REVIEWS_THREAD_ID,
           text: msg,
-          error: e && e.response && e.response.body ? e.response.body : (e && e.stack ? e.stack : e),
+          error: body || (e && e.stack ? e.stack : e),
           date: new Date().toISOString()
         });
+        if (body && body.description && /message thread not found/i.test(body.description)) {
+          console.log('[TG] Message fallback: retrying without thread_id...');
+          bot.sendMessage(TG_CHAT_ID, msg, { parse_mode: 'HTML' })
+            .then(tgRes2 => {
+              console.log('[TG] Message sent (fallback no thread):', {
+                chat_id: TG_CHAT_ID,
+                text: msg,
+                tg_message_id: tgRes2 && tgRes2.message_id,
+                date: new Date().toISOString()
+              });
+            })
+            .catch(e2 => {
+              console.error('[TG] Message Fallback ERROR:', {
+                chat_id: TG_CHAT_ID,
+                text: msg,
+                error: e2 && e2.response && e2.response.body ? e2.response.body : (e2 && e2.stack ? e2.stack : e2),
+                date: new Date().toISOString()
+              });
+            });
+        }
       });
     }
     console.log('Review saved, reviewId:', this.lastID);
