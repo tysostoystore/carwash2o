@@ -48,8 +48,8 @@ process.on('uncaughtException', (err) => {
 // === Telegram notification config ===
 const TG_TOKEN = process.env.TG_TOKEN || '<YOUR_BOT_TOKEN_HERE>';
 const TG_CHAT_ID = -1002856721715;
-const TG_REVIEWS_THREAD_ID = 156;
-const TG_ORDERS_THREAD_ID = 158;
+const TG_REVIEWS_THREAD_ID = 26; // Reviews topic
+const TG_ORDERS_THREAD_ID = 29; // Orders topic
 const bot = new TelegramBot(TG_TOKEN, { polling: false });
 
 app.use(express.json({ limit: '5mb' }));
