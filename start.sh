@@ -15,5 +15,18 @@ else
   echo "START.SH: No netstat/lsof available for port listing."
 fi
 
-echo "START.SH: launching backend/server.js"
-node backend/server.js
+# Запуск по имени процесса (используется process groups в fly.toml)
+case "$1" in
+  app)
+    echo "START.SH: launching backend/server.js"
+    exec node backend/server.js
+    ;;
+  bot)
+    echo "START.SH: launching bot.js"
+    exec node bot.js
+    ;;
+  *)
+    echo "START.SH: default -> backend/server.js (arg='$1')"
+    exec node backend/server.js
+    ;;
+esac

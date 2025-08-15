@@ -630,6 +630,24 @@ if (bot) bot.onText(/\/start/, async (msg) => {
   }
 });
 
+// --- Helper: /thread — reply with chat_id and message_thread_id ---
+if (bot) bot.onText(/\/thread/, async (msg) => {
+  try {
+    const chatId = msg.chat && msg.chat.id;
+    const threadId = msg.message_thread_id;
+    const isTopic = typeof threadId === 'number';
+    const info = `chat_id: ${chatId}\nthread_id: ${isTopic ? threadId : 'none'}\nis_topic: ${isTopic}`;
+    console.log('[THREAD]', info.replace(/\n/g, ' '));
+    if (isTopic) {
+      await bot.sendMessage(chatId, 'Debug thread info:\n' + info, { message_thread_id: threadId });
+    } else {
+      await bot.sendMessage(chatId, 'Debug thread info:\n' + info);
+    }
+  } catch (e) {
+    console.error('[/thread] error:', e && e.response && e.response.body ? e.response.body : e);
+  }
+});
+
 // TEMP: Log chat_id and message_thread_id for group topics
 // Отключаем автоответ на каждое сообщение без /start (чтобы не было спама)
 if (bot) bot.on('message', (msg) => {
