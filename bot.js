@@ -601,8 +601,19 @@ if (bot) bot.on('message', (msg) => {
 // --- Антиспам на приветствие ---
 const lastWelcome = {};
 
+// Keep a simple processed message set to avoid accidental double handling
+if (!global._processedStartMsgs) global._processedStartMsgs = new Set();
+
 if (bot) bot.onText(/\/start/, async (msg) => {
+  // Reply only in private chats to avoid duplicates from groups/topics
+  if (msg.chat && msg.chat.type !== 'private') {
+    return;
+  }
+
   const chatId = msg.chat.id;
+  const uniqueKey = `${chatId}:${msg.message_id}`;
+  if (global._processedStartMsgs.has(uniqueKey)) return;
+  global._processedStartMsgs.add(uniqueKey);
   const now = Date.now();
   // Не отправлять приветствие чаще, чем раз в минуту на пользователя
   if (lastWelcome[chatId] && now - lastWelcome[chatId] < 60 * 1000) {
