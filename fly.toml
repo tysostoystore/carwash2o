@@ -15,7 +15,7 @@ primary_region = "waw" # Можно поменять на ru-central1, если 
   destination = "/app/backend/data"
   source = "carwash_data"
 
-[# Define two process groups: web app and bot]
+# Define two process groups: web app and bot
 [processes]
   app = "/app/start.sh app"
   bot = "/app/start.sh bot"
