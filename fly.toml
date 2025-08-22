@@ -1,5 +1,5 @@
 app = "carwash2o"
-primary_region = "waw" # Можно поменять на ru-central1, если Fly.io поддерживает РФ-регионы
+primary_region = "arn" # Можно поменять на ru-central1, если Fly.io поддерживает РФ-регионы
 
 [build]
   dockerfile = "Dockerfile"
