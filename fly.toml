@@ -15,13 +15,9 @@ primary_region = "waw" # Можно поменять на ru-central1, если 
   destination = "/app/backend/data"
   source = "carwash_data"
 
-# Define two process groups: web app and bot
-[processes]
-  app = "/app/start.sh app"
-  bot = "/app/start.sh bot"
+# Single-machine mode: start.sh runs both backend and bot via concurrently
 
 [[services]]
-  processes = ["app"]
   internal_port = 3000
   protocol = "tcp"
 

@@ -15,18 +15,20 @@ else
   echo "START.SH: No netstat/lsof available for port listing."
 fi
 
-# Запуск по имени процесса (используется process groups в fly.toml)
+# Единый запуск: backend и bot вместе (для одной машины на Free tier)
+# Если переданы явные аргументы, поддерживаем старый режим для совместимости
 case "$1" in
   app)
-    echo "START.SH: launching backend/server.js"
+    echo "START.SH: launching backend/server.js (legacy single-process mode)"
     exec node backend/server.js
     ;;
   bot)
-    echo "START.SH: launching bot.js"
+    echo "START.SH: launching bot.js (legacy single-process mode)"
     exec node bot.js
     ;;
   *)
-    echo "START.SH: default -> backend/server.js (arg='$1')"
-    exec node backend/server.js
+    echo "START.SH: launching BOTH: backend/server.js + bot.js via concurrently"
+    # concurrently установлен глобально в Dockerfile
+    exec concurrently "node backend/server.js" "node bot.js"
     ;;
 esac
