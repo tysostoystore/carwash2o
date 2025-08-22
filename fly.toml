@@ -20,11 +20,27 @@ primary_region = "arn" # Можно поменять на ru-central1, если 
 [[services]]
   internal_port = 3000
   protocol = "tcp"
+  force_https = true
+  http_checks = []
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
 
   [[services.ports]]
-    handlers = ["http"]
     port = 80
+    handlers = ["http"]
+    force_https = true
 
   [[services.ports]]
-    handlers = ["tls", "http"]
     port = 443
+    handlers = ["tls", "http"]
+
+  [[services.http_checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "5s"
+    method = "GET"
+    path = "/health"
+    protocol = "http"
+    tls_skip_verify = true

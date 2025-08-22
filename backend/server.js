@@ -69,6 +69,12 @@ try {
 
 // === Serve static frontend ===
 app.use(express.static(path.join(__dirname, '../frontend')));
+
+// Health check endpoint for Fly.io
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
+});
+
 // SPA fallback: serve index.html for unknown routes (except API)
 app.get(/^\/(?!api|admin|backend|orders|reviews|catalog).*/, (req, res, next) => {
   if (req.accepts('html')) {
