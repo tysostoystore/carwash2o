@@ -25,12 +25,13 @@ const app = express();
 app.use(cors());
 app.options('*', cors());
 
-// Get port from environment or default to 3000 for local development
+// Get port and host from environment or use defaults for local development
 const PORT = process.env.PORT || 3000;
+const HOST = process.env.HOST || '0.0.0.0';  // Listen on all interfaces by default
 
 // Start the server
-const server = app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on port ${PORT}`);
+const server = app.listen(PORT, HOST, () => {
+  console.log(`Server running on ${HOST}:${PORT}`);
 });
 
 // Handle any unhandled promise rejections

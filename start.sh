@@ -20,7 +20,8 @@ fi
 case "$1" in
   app)
     echo "START.SH: launching backend/server.js (legacy single-process mode)"
-    exec node backend/server.js
+    # Explicitly set HOST to 0.0.0.0 for Fly.io
+    HOST=0.0.0.0 PORT=3000 exec node backend/server.js
     ;;
   bot)
     echo "START.SH: launching bot.js (legacy single-process mode)"
@@ -28,7 +29,7 @@ case "$1" in
     ;;
   *)
     echo "START.SH: launching BOTH: backend/server.js + bot.js via concurrently"
-    # concurrently установлен глобально в Dockerfile
-    exec concurrently "node backend/server.js" "node bot.js"
+    # Explicitly set HOST to 0.0.0.0 for Fly.io
+    HOST=0.0.0.0 PORT=3000 exec concurrently "node backend/server.js" "node bot.js"
     ;;
 esac
