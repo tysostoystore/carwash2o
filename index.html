@@ -259,7 +259,7 @@
         if (data.tg_user_id) {
           headers['X-Telegram-User-Id'] = String(data.tg_user_id);
         }
-        const res = await fetch('https://carwash2o.fly.dev/reviews', {
+        const res = await fetch('/reviews', {
           method: 'POST',
           headers,
           body: JSON.stringify(data)

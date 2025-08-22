@@ -12,9 +12,10 @@ try {
   // Если фронт собирается как Node (например, для SSR)
   ({ BACKEND_URL, WEBAPP_URL } = require("../config.js"));
 } catch {
-  // Если фронт работает в браузере, ищем window-переменные (например, через config.js для браузера)
-  BACKEND_URL = window.BACKEND_URL || "https://carwash2o.fly.dev";
-  WEBAPP_URL = window.WEBAPP_URL || "https://carwash2o.fly.dev/";
+  // Если фронт работает в браузере, используем домен текущей страницы (например, Pages)
+  const origin = (typeof window !== 'undefined' && window.location && window.location.origin) ? window.location.origin : '';
+  BACKEND_URL = (typeof window !== 'undefined' && window.BACKEND_URL) ? window.BACKEND_URL : origin;
+  WEBAPP_URL = (typeof window !== 'undefined' && window.WEBAPP_URL) ? window.WEBAPP_URL : (origin ? origin + '/' : '/');
 }
 // getTelegramUser теперь глобально через window.getTelegramUser
 const api = (path, opts = {}) => fetch(BACKEND_URL + path, opts).then(r => r.json());
