@@ -1,4 +1,4 @@
 // Этот файл генерируется автоматически из ../config.js
-// Не редактируйте вручную!
-window.BACKEND_URL = "https://carwash2o.fly.dev";
-window.WEBAPP_URL = "https://carwash2o.fly.dev/";
+// Для браузера используем текущий origin, чтобы все запросы шли через Pages/прокси
+window.BACKEND_URL = window.location.origin;
+window.WEBAPP_URL = window.location.origin + "/";
