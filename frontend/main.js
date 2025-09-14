@@ -111,7 +111,7 @@ async function renderBookingForm() {
                 <button type="button" class="w-full px-4 py-3 text-left flex items-center justify-between focus:outline-none transition-all group" data-srv="${i}" aria-expanded="${srv._expanded ? 'true' : 'false'}">
                   <span class="flex flex-col">
                     <span class="font-semibold text-white">${srv.name}</span>
-                    <span class="text-sm text-gray-400">${srv.promo?'<span class=\'inline-block bg-[#f97316] text-xs text-white rounded px-2 py-0.5 mr-2\'>АКЦИЯ</span>':''}${catalog.bodyTypes[selectedBody]} — <span class="font-bold text-[#f97316]">${srv.prices[selectedBody]}₽</span>${srv.durationMinutes?` · <span class=\'text-gray-300\'>~${formatDuration(srv.durationMinutes)}</span>`:''}</span>
+                    <span class="text-sm text-gray-400">${srv.promo?'<span class=\'inline-block bg-[#f97316] text-xs text-white rounded px-2 py-0.5 mr-2\'>АКЦИЯ</span>':''}${catalog.bodyTypes[selectedBody]} — ${srv.oldPrice?`<span class="line-through text-gray-500 mr-1">${srv.oldPrice[selectedBody]}₽</span>`:''}<span class="font-bold text-[#f97316]">${srv.prices[selectedBody]}₽</span>${srv.durationMinutes?` · <span class=\'text-gray-300\'>~${formatDuration(srv.durationMinutes)}</span>`:''}</span>
                   </span>
                   <span class="ml-2 text-gray-300 text-lg flex items-center gap-2">
                     <span class="${isSelected?'text-[#f97316]':'text-gray-500]'}">${isSelected?'✓':''}</span>
